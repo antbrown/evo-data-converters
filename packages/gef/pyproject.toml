@@ -23,7 +23,8 @@ Documentation = "https://developer.seequent.com/"
 
 [dependency-groups]
 dev = [
-    "pytest"
+    "pytest",
+    "pytest-mock>=3.15.1",
 ]
 
 [tool.ruff]
