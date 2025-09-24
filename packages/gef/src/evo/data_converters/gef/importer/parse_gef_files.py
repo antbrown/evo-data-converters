@@ -40,6 +40,7 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
 
             cpt_data = read_cpt(filepath)
 
+            # Required columns taken from https://bedrock.engineer/reference/formats/gef/gef-cpt/#column-quantities
             required_columns = ["penetrationLength", "coneResistance"]
             if hasattr(cpt_data, "data"):
                 missing = [col for col in required_columns if col not in cpt_data.data.columns]
