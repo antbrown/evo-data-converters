@@ -18,7 +18,7 @@ import os
 
 
 class TestParseGefFiles:
-    """Test the convert_gef function behaves as intended."""
+    """Test the parse_gef_files function behaves as intended."""
 
     test_data_dir = Path(os.path.dirname(__file__)) / "data"
 
