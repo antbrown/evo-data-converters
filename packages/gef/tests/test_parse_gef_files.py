@@ -14,13 +14,13 @@ from pathlib import Path
 from pygef.cpt import CPTData
 from evo.data_converters.gef.importer.parse_gef_files import parse_gef_files
 
-import os
+
 
 
 class TestParseGefFiles:
-    """Test the parse_gef_files function behaves as intended."""
+    """Test the convert_gef function behaves as intended."""
 
-    test_data_dir = Path(os.path.dirname(__file__)) / "data"
+    test_data_dir = Path(__file__).parent / "data"
 
     def test_parse_valid_cpt_file(self) -> None:
         cpt_file = self.test_data_dir / "cpt.gef"
