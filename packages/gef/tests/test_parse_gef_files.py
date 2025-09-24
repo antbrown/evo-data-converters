@@ -15,10 +15,8 @@ from pygef.cpt import CPTData
 from evo.data_converters.gef.importer.parse_gef_files import parse_gef_files
 
 
-
-
 class TestParseGefFiles:
-    """Test the convert_gef function behaves as intended."""
+    """Test the parse_gef_files function behaves as intended."""
 
     test_data_dir = Path(__file__).parent / "data"
 
