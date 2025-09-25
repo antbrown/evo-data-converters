@@ -47,8 +47,15 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
                 if missing:
                     raise ValueError(f"File '{filepath}' is missing required columns: {missing}")
 
-            filename = Path(filepath).stem
-            data[filename] = cpt_data
+            # Use gef.test_id as hole id if it exists, else fallback to filename
+            hole_id = getattr(gef, "test_id", None)
+            if not hole_id:
+                hole_id = Path(filepath).stem
+            if hole_id in data:
+                raise ValueError(
+                    f"Duplicate hole_id '{hole_id}' for file '{filepath}'. Each hole_id (generated from test_id if exists, falls back to filename) must be unique across all input files"
+                )
+            data[hole_id] = cpt_data
         except Exception as e:
             raise RuntimeError(f"Error processing file '{filepath}': {e}") from e
 

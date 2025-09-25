@@ -25,17 +25,15 @@ class TestParseGefFiles:
         result = parse_gef_files([cpt_file])
         assert isinstance(result, dict)
         assert len(result) == 1
-        hole_id = cpt_file.stem
-        assert hole_id in result
-        assert isinstance(result[hole_id], CPTData)
+        for v in result.values():
+            assert isinstance(v, CPTData)
 
     def test_parse_multiple_valid_cpt_files(self) -> None:
         files = [self.test_data_dir / "cpt.gef", self.test_data_dir / "cpt2.gef"]
         result = parse_gef_files(files)
         assert len(result) == 2
-        for f in files:
-            assert f.stem in result
-            assert isinstance(result[f.stem], CPTData)
+        for v in result.values():
+            assert isinstance(v, CPTData)
 
     def test_file_not_found(self) -> None:
         missing_file = self.test_data_dir / "does_not_exist.gef"
@@ -48,3 +46,12 @@ class TestParseGefFiles:
         with pytest.raises(RuntimeError) as exc:
             parse_gef_files([bore_file])
         assert "is not a CPT GEF file" in str(exc.value)
+
+    def test_overlapping_hole_ids(self):
+        """Test that parse_gef_files raises an error for duplicate hole_ids (from test_id or filename)."""
+        file1 = self.test_data_dir / "cpt.gef"
+        file2 = self.test_data_dir / "cpt_duplicate_test_id.gef"
+
+        with pytest.raises(RuntimeError) as exc:
+            parse_gef_files([file1, file2])
+        assert "Duplicate hole_id" in str(exc.value)
