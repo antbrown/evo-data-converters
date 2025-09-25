@@ -11,19 +11,24 @@
 
 from pathlib import Path
 
+import evo.logging
+
+from pygef.broxml.parse_cpt import read_cpt as read_cpt_xml
 from pygef import read_cpt
 from pygef.cpt import CPTData
 from pygef.gef.gef import _Gef
 
+logger = evo.logging.getLogger("data_converters")
+
 
 def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
     """
-    Parse a list of GEF files and return a dictionary of CPTData objects keyed by filename.
+    Parse a list of GEF & CPT XML files and return a dictionary of CPTData objects keyed by filename.
 
     Only files identified as CPT (Cone Penetration Test) are read and included.
 
     Args:
-        filepaths (list[str | Path]): List of file paths to GEF files to parse.
+        filepaths (list[str | Path]): List of file paths to parse.
 
     Returns:
         dict[str, CPTData]: Dictionary mapping each CPT file's filename to its CPTData object.
@@ -34,29 +39,62 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
         try:
             if not Path(filepath).exists():
                 raise FileNotFoundError(f"File not found: {filepath}")
-            gef = _Gef(filepath)
-            if gef.type != "cpt":
-                raise ValueError(f"File '{filepath}' is not a CPT GEF file (type: {gef.type})")
+            ext = Path(filepath).suffix.lower()
+            hole_id_cpt_pairs = []
+            if ext == ".xml":
+                # No method in pygef to detect type, so just try to read as CPT.
+                # XML files can contain multiple CPT entries.
+                try:
+                    multiple_cpt_data = read_cpt_xml(filepath)
+                except Exception:
+                    raise ValueError(f"File '{filepath}' is not a CPT XML file or could not be parsed as CPT data.")
 
-            cpt_data = read_cpt(filepath)
+                for cpt_data in multiple_cpt_data:
+                    hole_id = getattr(cpt_data, "bro_id", None)
+                    if not hole_id:
+                        hole_id = Path(filepath).stem
+                    check_for_required_columns(cpt_data, filepath)
+                    hole_id_cpt_pairs.append((hole_id, cpt_data))
+            else:
+                # _Gef only reads .gef files.
+                gef = _Gef(filepath)
+                if gef.type != "cpt":
+                    raise ValueError(f"File '{filepath}' is not a CPT GEF file (type: {gef.type})")
+                cpt_data = read_cpt(filepath)
+                hole_id = getattr(gef, "test_id", None)
+                if not hole_id:
+                    hole_id = Path(filepath).stem
+                check_for_required_columns(cpt_data, filepath)
+                hole_id_cpt_pairs.append((hole_id, cpt_data))
 
-            # Required columns taken from https://bedrock.engineer/reference/formats/gef/gef-cpt/#column-quantities
-            required_columns = ["penetrationLength", "coneResistance"]
-            if hasattr(cpt_data, "data"):
-                missing = [col for col in required_columns if col not in cpt_data.data.columns]
-                if missing:
-                    raise ValueError(f"File '{filepath}' is missing required columns: {missing}")
-
-            # Use gef.test_id as hole id if it exists, else fallback to filename
-            hole_id = getattr(gef, "test_id", None)
-            if not hole_id:
-                hole_id = Path(filepath).stem
-            if hole_id in data:
-                raise ValueError(
-                    f"Duplicate hole_id '{hole_id}' for file '{filepath}'. Each hole_id (generated from test_id if exists, falls back to filename) must be unique across all input files"
-                )
-            data[hole_id] = cpt_data
+            # Add CPT data to output dict, ensuring unique hole_id keys
+            for hole_id, cpt_data in hole_id_cpt_pairs:
+                if hole_id in data:
+                    raise ValueError(
+                        f"Duplicate hole_id '{hole_id}' encountered. Each hole_id (from test_id, bro_id, or filename) must be unique across all input files."
+                    )
+                data[hole_id] = cpt_data
         except Exception as e:
             raise RuntimeError(f"Error processing file '{filepath}': {e}") from e
 
+    logger.info(f"Parsed {len(data)} CPT files from {len(filepaths)} input files.")
     return data
+
+
+def check_for_required_columns(cpt_data: CPTData, filepath: str) -> None:
+    """Check that the CPTData object has the required columns.
+
+    Required columns taken from https://bedrock.engineer/reference/formats/gef/gef-cpt/#column-quantities
+
+    Args:
+        cpt_data (CPTData): The CPTData object to check.
+        filepath (str): The file path of the GEF file being processed.
+
+    Raises:
+        ValueError: If any required columns are missing.
+    """
+    required_columns = ["penetrationLength", "coneResistance"]
+    if hasattr(cpt_data, "data"):
+        missing = [col for col in required_columns if col not in cpt_data.data.columns]
+        if missing:
+            raise ValueError(f"File '{filepath}' is missing required columns: {missing}")

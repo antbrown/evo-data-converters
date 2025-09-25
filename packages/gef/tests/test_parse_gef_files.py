@@ -20,7 +20,7 @@ class TestParseGefFiles:
 
     test_data_dir = Path(__file__).parent / "data"
 
-    def test_parse_valid_cpt_file(self) -> None:
+    def test_parse_valid_cpt_gef_file(self) -> None:
         cpt_file = self.test_data_dir / "cpt.gef"
         result = parse_gef_files([cpt_file])
         assert isinstance(result, dict)
@@ -29,9 +29,29 @@ class TestParseGefFiles:
             assert isinstance(v, CPTData)
 
     def test_parse_multiple_valid_cpt_files(self) -> None:
-        files = [self.test_data_dir / "cpt.gef", self.test_data_dir / "cpt2.gef"]
+        files = [
+            self.test_data_dir / "cpt.gef",
+            self.test_data_dir / "cpt2.gef",
+            self.test_data_dir / "cpt.xml",
+        ]
         result = parse_gef_files(files)
-        assert len(result) == 2
+        assert len(result) == 3
+        for v in result.values():
+            assert isinstance(v, CPTData)
+
+    def test_parse_valid_cpt_xml_file(self) -> None:
+        cpt_file = self.test_data_dir / "cpt.xml"
+        result = parse_gef_files([cpt_file])
+        assert isinstance(result, dict)
+        assert len(result) == 1
+        for v in result.values():
+            assert isinstance(v, CPTData)
+
+    def test_parse_cpt_xml_with_multiple_entries(self) -> None:
+        cpt_file = self.test_data_dir / "cpt_multiple.xml"
+        result = parse_gef_files([cpt_file])
+        assert isinstance(result, dict)
+        assert len(result) == 2  # Expecting 2 CPT entries in the XML
         for v in result.values():
             assert isinstance(v, CPTData)
 
