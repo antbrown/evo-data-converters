@@ -10,9 +10,9 @@
 #  limitations under the License.
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from evo_schemas.objects import DownholeCollection_V1_3_0 as DownholeCollection
+from evo_schemas.objects import DownholeCollection_V1_3_1 as DownholeCollection
 
 import evo.logging
 from evo.data_converters.common import (
@@ -20,10 +20,12 @@ from evo.data_converters.common import (
     create_evo_object_service_and_data_client,
     publish_geoscience_objects,
 )
+from evo.data_converters.common.objects.downhole_collection_to_geoscience_object import (
+    DownholeCollectionToGeoscienceObject,
+)
 from evo.objects.data import ObjectMetadata
 
-from .parse_gef_files import parse_gef_files
-from .gef_to_downhole_collection import create_downhole_collection
+from evo.data_converters.gef.converter import create_from_parsed_gef_cpts, parse_gef_files
 
 logger = evo.logging.getLogger("data_converters")
 
@@ -33,12 +35,12 @@ if TYPE_CHECKING:
 
 def convert_gef(
     filepaths: list[str | Path],
-    evo_workspace_metadata: Optional[EvoWorkspaceMetadata] = None,
-    service_manager_widget: Optional["ServiceManagerWidget"] = None,
-    tags: Optional[dict[str, str]] = None,
+    evo_workspace_metadata: EvoWorkspaceMetadata | None = None,
+    service_manager_widget: "ServiceManagerWidget | None" = None,
+    tags: dict[str, str] | None = None,
     upload_path: str = "",
     overwrite_existing_objects: bool = False,
-) -> DownholeCollection | ObjectMetadata | None:
+) -> DownholeCollection | list[ObjectMetadata] | None:
     """Converts a collection of GEF-CPT files into a Downhole Collection Geoscience Object.
 
     :param filepaths: List of Paths to the GEF files.
@@ -69,7 +71,9 @@ def convert_gef(
         publish_object = False
 
     gef_cpt_data = parse_gef_files(filepaths)
-    geoscience_object = create_downhole_collection(gef_cpt_data)
+    downhole_collection = create_from_parsed_gef_cpts(gef_cpt_data)
+    converter = DownholeCollectionToGeoscienceObject(dhc=downhole_collection, data_client=data_client)
+    geoscience_object = converter.convert()
 
     if geoscience_object:
         if geoscience_object.tags is None:

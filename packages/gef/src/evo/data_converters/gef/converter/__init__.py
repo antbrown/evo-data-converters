@@ -9,9 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from evo_schemas.objects import DownholeCollection_V1_3_0 as DownholeCollection
-from pygef.cpt import CPTData
+from .gef_to_downhole_collection import create_from_parsed_gef_cpts
+from .parse_gef_files import parse_gef_files
 
-
-def create_downhole_collection(parsed_cpt_files: dict[str, CPTData]) -> DownholeCollection | None:
-    pass
+__all__ = [
+    "create_from_parsed_gef_cpts",
+    "parse_gef_files",
+]
