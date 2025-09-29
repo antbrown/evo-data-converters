@@ -10,9 +10,9 @@
 #  limitations under the License.
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from evo_schemas.objects import DownholeCollection_V1_3_0 as DownholeCollection
+from evo_schemas.objects import DownholeCollection_V1_3_1 as DownholeCollection
 
 import evo.logging
 from evo.data_converters.common import (
@@ -33,11 +33,11 @@ if TYPE_CHECKING:
 
 def convert_gef(
     filepaths: list[str | Path],
-    evo_workspace_metadata: Optional[EvoWorkspaceMetadata] = None,
-    service_manager_widget: Optional["ServiceManagerWidget"] = None,
-    tags: Optional[dict[str, str]] = None,
+    evo_workspace_metadata: EvoWorkspaceMetadata | None = None,
+    service_manager_widget: "ServiceManagerWidget | None" = None,
+    tags: dict[str, str] | None = None,
     upload_path: str = "",
-) -> DownholeCollection | ObjectMetadata | None:
+) -> DownholeCollection | list[ObjectMetadata] | None:
     """Converts a collection of GEF-CPT files into a Downhole Collection Geoscience Object.
 
     :param filepaths: List of Paths to the GEF files.
@@ -67,7 +67,7 @@ def convert_gef(
         publish_object = False
 
     gef_cpt_data = parse_gef_files(filepaths)
-    geoscience_object = create_downhole_collection(gef_cpt_data)
+    geoscience_object = create_downhole_collection(gef_cpt_data, data_client)
 
     if geoscience_object:
         if geoscience_object.tags is None:
