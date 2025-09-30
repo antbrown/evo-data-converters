@@ -16,7 +16,6 @@ import evo.logging
 from pygef.broxml.parse_cpt import read_cpt as read_cpt_xml
 from pygef import read_cpt
 from pygef.cpt import CPTData
-from pygef.gef.gef import _Gef
 
 logger = evo.logging.getLogger("data_converters")
 
@@ -56,12 +55,8 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
                     check_for_required_columns(cpt_data, filepath)
                     hole_id_cpt_pairs.append((hole_id, cpt_data))
             else:
-                # _Gef only reads .gef files.
-                gef = _Gef(filepath)
-                if gef.type != "cpt":
-                    raise ValueError(f"File '{filepath}' is not a CPT GEF file (type: {gef.type})")
                 cpt_data = read_cpt(filepath)
-                hole_id = getattr(gef, "test_id", None)
+                hole_id = getattr(cpt_data, "alias", None)
                 if not hole_id:
                     hole_id = Path(filepath).stem
                 check_for_required_columns(cpt_data, filepath)
