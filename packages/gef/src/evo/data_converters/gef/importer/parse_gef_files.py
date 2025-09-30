@@ -54,13 +54,17 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
                         hole_id = Path(filepath).resolve()
                     check_for_required_columns(cpt_data, filepath)
                     hole_id_cpt_pairs.append((hole_id, cpt_data))
-            else:
+
+            elif ext == ".gef":
                 cpt_data = read_cpt(filepath)
                 hole_id = getattr(cpt_data, "alias", None)
                 if not hole_id:
                     hole_id = Path(filepath).resolve()
                 check_for_required_columns(cpt_data, filepath)
                 hole_id_cpt_pairs.append((hole_id, cpt_data))
+
+            else:
+                raise ValueError(f"File '{filepath}' does not have an XML or GEF extension.")
 
             # Add CPT data to output dict, ensuring unique hole_id keys
             for hole_id, cpt_data in hole_id_cpt_pairs:
