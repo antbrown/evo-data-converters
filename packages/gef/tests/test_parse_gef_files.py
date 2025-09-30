@@ -65,7 +65,7 @@ class TestParseGefFiles:
         bore_file = self.test_data_dir / "bore.gef"
         with pytest.raises(RuntimeError) as exc:
             parse_gef_files([bore_file])
-        assert "is not a CPT GEF file" in str(exc.value)
+        assert "gef file is not a cpt" in str(exc.value)
 
     def test_overlapping_hole_ids(self):
         """Test that parse_gef_files raises an error for duplicate hole_ids (from test_id or filename)."""
