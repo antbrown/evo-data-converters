@@ -67,7 +67,7 @@ class TestParseGefFiles:
             parse_gef_files([bore_file])
         assert "gef file is not a cpt" in str(exc.value)
 
-    def test_not_unrecognized_type(self) -> None:
+    def test_unrecognized_type(self) -> None:
         bore_file = self.test_data_dir / "../../README.md"
         with pytest.raises(RuntimeError) as exc:
             parse_gef_files([bore_file])
