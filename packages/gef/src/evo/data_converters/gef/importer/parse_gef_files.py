@@ -16,7 +16,6 @@ import evo.logging
 from pygef.broxml.parse_cpt import read_cpt as read_cpt_xml
 from pygef import read_cpt
 from pygef.cpt import CPTData
-from pygef.gef.gef import _Gef
 
 logger = evo.logging.getLogger("data_converters")
 
@@ -52,20 +51,22 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
                 for cpt_data in multiple_cpt_data:
                     hole_id = getattr(cpt_data, "bro_id", None)
                     if not hole_id:
-                        hole_id = Path(filepath).stem
+                        hole_id = str(Path(filepath).resolve())
                     check_for_required_columns(cpt_data, filepath)
                     hole_id_cpt_pairs.append((hole_id, cpt_data))
-            else:
-                # _Gef only reads .gef files.
-                gef = _Gef(filepath)
-                if gef.type != "cpt":
-                    raise ValueError(f"File '{filepath}' is not a CPT GEF file (type: {gef.type})")
+
+            elif ext == ".gef":
                 cpt_data = read_cpt(filepath)
-                hole_id = getattr(gef, "test_id", None)
+                # GEF test ID is in alias.
+                # https://github.com/cemsbv/pygef/blob/6002e174b154a6ef7726f7a3aa467d6ada22be92/src/pygef/shim.py#L106
+                hole_id = getattr(cpt_data, "alias", None)
                 if not hole_id:
-                    hole_id = Path(filepath).stem
+                    hole_id = str(Path(filepath).resolve())
                 check_for_required_columns(cpt_data, filepath)
                 hole_id_cpt_pairs.append((hole_id, cpt_data))
+
+            else:
+                raise ValueError(f"File '{filepath}' has extension '{ext}', expected .xml or .gef.")
 
             # Add CPT data to output dict, ensuring unique hole_id keys
             for hole_id, cpt_data in hole_id_cpt_pairs:
@@ -74,6 +75,10 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
                         f"Duplicate hole_id '{hole_id}' encountered. Each hole_id (from test_id, bro_id, or filename) must be unique across all input files."
                     )
                 data[hole_id] = cpt_data
+        except FileNotFoundError:
+            raise
+        except ValueError:
+            raise
         except Exception as e:
             raise RuntimeError(f"Error processing file '{filepath}': {e}") from e
 
