@@ -57,6 +57,8 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
 
             elif ext == ".gef":
                 cpt_data = read_cpt(filepath)
+                # GEF test ID is in alias.
+                # https://github.com/cemsbv/pygef/blob/6002e174b154a6ef7726f7a3aa467d6ada22be92/src/pygef/shim.py#L106
                 hole_id = getattr(cpt_data, "alias", None)
                 if not hole_id:
                     hole_id = Path(filepath).resolve()
