@@ -75,6 +75,10 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
                         f"Duplicate hole_id '{hole_id}' encountered. Each hole_id (from test_id, bro_id, or filename) must be unique across all input files."
                     )
                 data[hole_id] = cpt_data
+        except FileNotFoundError:
+            raise
+        except ValueError:
+            raise
         except Exception as e:
             raise RuntimeError(f"Error processing file '{filepath}': {e}") from e
 
