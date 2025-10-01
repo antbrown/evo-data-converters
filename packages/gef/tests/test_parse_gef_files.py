@@ -57,19 +57,19 @@ class TestParseGefFiles:
 
     def test_file_not_found(self) -> None:
         missing_file = self.test_data_dir / "does_not_exist.gef"
-        with pytest.raises(RuntimeError) as exc:
+        with pytest.raises(FileNotFoundError) as exc:
             parse_gef_files([missing_file])
         assert "File not found" in str(exc.value)
 
     def test_not_cpt_type(self) -> None:
         bore_file = self.test_data_dir / "bore.gef"
-        with pytest.raises(RuntimeError) as exc:
+        with pytest.raises(ValueError) as exc:
             parse_gef_files([bore_file])
         assert "gef file is not a cpt" in str(exc.value)
 
     def test_unrecognized_type(self) -> None:
         bore_file = self.test_data_dir / "../../README.md"
-        with pytest.raises(RuntimeError) as exc:
+        with pytest.raises(ValueError) as exc:
             parse_gef_files([bore_file])
         assert "has extension '.md', expected .xml or .gef" in str(exc.value)
 
@@ -78,6 +78,6 @@ class TestParseGefFiles:
         file1 = self.test_data_dir / "cpt.gef"
         file2 = self.test_data_dir / "cpt_duplicate_test_id.gef"
 
-        with pytest.raises(RuntimeError) as exc:
+        with pytest.raises(ValueError) as exc:
             parse_gef_files([file1, file2])
         assert "Duplicate hole_id" in str(exc.value)
