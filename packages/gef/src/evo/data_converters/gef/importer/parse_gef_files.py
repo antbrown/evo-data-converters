@@ -51,7 +51,7 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
                 for cpt_data in multiple_cpt_data:
                     hole_id = getattr(cpt_data, "bro_id", None)
                     if not hole_id:
-                        hole_id = Path(filepath).resolve()
+                        hole_id = str(Path(filepath).resolve())
                     check_for_required_columns(cpt_data, filepath)
                     hole_id_cpt_pairs.append((hole_id, cpt_data))
 
@@ -61,7 +61,7 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
                 # https://github.com/cemsbv/pygef/blob/6002e174b154a6ef7726f7a3aa467d6ada22be92/src/pygef/shim.py#L106
                 hole_id = getattr(cpt_data, "alias", None)
                 if not hole_id:
-                    hole_id = Path(filepath).resolve()
+                    hole_id = str(Path(filepath).resolve())
                 check_for_required_columns(cpt_data, filepath)
                 hole_id_cpt_pairs.append((hole_id, cpt_data))
 
