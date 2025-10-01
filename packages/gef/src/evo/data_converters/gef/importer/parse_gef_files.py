@@ -66,7 +66,7 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
                 hole_id_cpt_pairs.append((hole_id, cpt_data))
 
             else:
-                raise ValueError(f"File '{filepath}' does not have an XML or GEF extension.")
+                raise ValueError(f"File '{filepath}' has extension '{ext}', expected .xml or .gef.")
 
             # Add CPT data to output dict, ensuring unique hole_id keys
             for hole_id, cpt_data in hole_id_cpt_pairs:
