@@ -13,6 +13,7 @@ import pytest
 from pathlib import Path
 from pygef.cpt import CPTData
 from evo.data_converters.gef.importer.parse_gef_files import parse_gef_files
+from evo.data_converters.gef.utils import is_gef_cpt
 
 
 class TestParseGefFiles:
@@ -20,7 +21,7 @@ class TestParseGefFiles:
 
     test_data_dir = Path(__file__).parent / "data"
 
-    def test_parse_valid_cpt_gef_file(self) -> None:
+    def test_parse_valid_gef_cpt_file(self) -> None:
         cpt_file = self.test_data_dir / "gef-cpt/cpt.gef"
         result = parse_gef_files([cpt_file])
         assert isinstance(result, dict)
@@ -83,3 +84,15 @@ class TestParseGefFiles:
         with pytest.raises(ValueError) as exc:
             parse_gef_files([file1, file2])
         assert "Duplicate ID" in str(exc.value)
+
+    def test_is_gef_cpt_valid(self) -> None:
+        cpt_file = self.test_data_dir / "gef-cpt/cpt.gef"
+        assert is_gef_cpt(cpt_file) is True
+
+    def test_is_gef_cpt_invalid(self) -> None:
+        cpt_file = self.test_data_dir / "../../README.md"
+        assert is_gef_cpt(cpt_file) is False
+
+    def test_is_gef_cpt_missing(self) -> None:
+        cpt_file = "/does_not_exist.gef"
+        assert is_gef_cpt(cpt_file) is False
