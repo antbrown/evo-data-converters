@@ -23,6 +23,7 @@ logger = evo.logging.getLogger("data_converters")
 def parse_gef_file(filepath: str | Path) -> list[CPTData]:
     """
     Parse a single GEF-CPT or GEF-XML file.
+
     Args:
         filepath (str | Path): Path to the file to parse.
 
