@@ -60,7 +60,7 @@ def assert_packed_refs(obj, path="root"):
             assert_packed_refs(v, f"{path}[{i}]")
 
 
-def create_downhole_collection(
+async def create_downhole_collection(
     cpt_dict: dict[str, CPTData],
     name: str = "Unnamed collection",
     # epsg_code: int,
@@ -209,24 +209,15 @@ def create_downhole_collection(
     )
     downhole_collection_path = upload_path
 
-    return {
-        "path": downhole_collection_path,
-        "data": downhole_collection,
-        "cpt_data": cpt_dict,
-    }
-    # # Upload the referenced blobs saved to the cache.
-    # await data_client.upload_referenced_data(downhole_collection, fb=FeedbackWidget("Uploading data"))
-    #
-    # # Create our Downhole Collection object.
-    # new_downhole_collection = await object_client.create_geoscience_object(
-    #     downhole_collection_path, downhole_collection
-    # )
-    #
-    # new_downhole_collection = await object_client.create_geoscience_object(
-    #     downhole_collection_path, downhole_collection
-    # )
-    #
-    # print(f"{new_downhole_collection.path}: <{new_downhole_collection.schema_id}>")
-    # print(f"\tCreated at: {new_downhole_collection.created_at}")
-    #
-    # return new_downhole_collection
+    # Upload the referenced blobs saved to the cache.
+    await data_client.upload_referenced_data(downhole_collection)
+
+    # Create our Downhole Collection object.
+    new_downhole_collection = await object_client.create_geoscience_object(
+        downhole_collection_path, downhole_collection
+    )
+
+    print(f"{new_downhole_collection.path}: <{new_downhole_collection.schema_id}>")
+    print(f"\tCreated at: {new_downhole_collection.created_at}")
+
+    return new_downhole_collection
