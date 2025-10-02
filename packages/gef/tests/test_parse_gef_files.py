@@ -82,4 +82,4 @@ class TestParseGefFiles:
 
         with pytest.raises(ValueError) as exc:
             parse_gef_files([file1, file2])
-        assert "Duplicate hole_id" in str(exc.value)
+        assert "Duplicate ID" in str(exc.value)
