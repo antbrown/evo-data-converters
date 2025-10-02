@@ -88,7 +88,7 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
                 cpt_id = get_gef_cpt_id(cpt_data)
                 if cpt_id in data:
                     raise ValueError(
-                        f"Duplicate ID '{cpt_id}' encountered. Each ID (from test_id, bro_id) must be unique across all input files."
+                        f"Duplicate ID '{cpt_id}' encountered. Each ID (from CPT 'alias' or 'bro_id') must be unique across all input files."
                     )
                 data[cpt_id] = cpt_data
         except FileNotFoundError:
@@ -124,6 +124,10 @@ def check_for_required_columns(cpt_data: CPTData, filepath: str) -> None:
 def get_gef_cpt_id(gef: CPTData) -> str:
     """
     Get a unique identifier for a CPTData object from alias (GEF-CPT) or bro_id (GEF-XML).
+
+    The "alias" property is populated for GEF-CPT format, from the CPT #TESTID header value.
+
+    The "bro_id" property is populated for GEF-XML format, from the CPT broId element.
 
     Args:
         gef (CPTData): The CPTData object to get the identifier for.
