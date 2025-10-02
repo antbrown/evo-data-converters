@@ -58,7 +58,7 @@ class TestParseGefFiles:
             assert isinstance(v, CPTData)
 
     def test_file_not_found(self) -> None:
-        missing_file = self.test_data_dir / "does_not_exist.gef"
+        missing_file = "/does_not_exist.gef"
         with pytest.raises(FileNotFoundError) as exc:
             parse_gef_files([missing_file])
         assert "File not found" in str(exc.value)
