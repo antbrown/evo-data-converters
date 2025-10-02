@@ -88,7 +88,7 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
                 cpt_id = get_gef_cpt_id(cpt_data)
                 if cpt_id in data:
                     raise ValueError(
-                        f"Duplicate ID '{cpt_id}' encountered. Each ID (from test_id, bro_id, or filename) must be unique across all input files."
+                        f"Duplicate ID '{cpt_id}' encountered. Each ID (from test_id, bro_id) must be unique across all input files."
                     )
                 data[cpt_id] = cpt_data
         except FileNotFoundError:
@@ -135,4 +135,4 @@ def get_gef_cpt_id(gef: CPTData) -> str:
     elif hasattr(gef, "alias") and gef.alias:
         return gef.alias
     else:
-        raise ValueError("CPT missing required identifier 'bro_id' / 'test_id'.")
+        raise ValueError("CPT missing required identifier 'bro_id' / 'alias'.")
