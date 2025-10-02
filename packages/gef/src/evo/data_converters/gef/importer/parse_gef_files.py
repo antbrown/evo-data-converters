@@ -22,7 +22,7 @@ logger = evo.logging.getLogger("data_converters")
 
 def parse_gef_file(filepath: str | Path) -> list[CPTData]:
     """
-    Parse a single GEF or CPT XML file.
+    Parse a single GEF-CPT or GEF-XML file.
     Args:
         filepath (str | Path): Path to the file to parse.
 
@@ -68,7 +68,7 @@ def parse_gef_file(filepath: str | Path) -> list[CPTData]:
 
 def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
     """
-    Parse a list of GEF & CPT XML files and return a dictionary of CPTData objects keyed by filename.
+    Parse a list of GEF-CPT & GEF-XML files and return a dictionary of CPTData objects keyed by filename.
 
     Only files identified as CPT (Cone Penetration Test) are read and included.
 
