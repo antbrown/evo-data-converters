@@ -21,7 +21,7 @@ class TestParseGefFiles:
     test_data_dir = Path(__file__).parent / "data"
 
     def test_parse_valid_cpt_gef_file(self) -> None:
-        cpt_file = self.test_data_dir / "cpt.gef"
+        cpt_file = self.test_data_dir / "gef-cpt/cpt.gef"
         result = parse_gef_files([cpt_file])
         assert isinstance(result, dict)
         assert len(result) == 1
@@ -30,17 +30,19 @@ class TestParseGefFiles:
 
     def test_parse_multiple_valid_cpt_files(self) -> None:
         files = [
-            self.test_data_dir / "cpt.gef",
-            self.test_data_dir / "cpt2.gef",
-            self.test_data_dir / "cpt.xml",
+            self.test_data_dir / "gef-cpt/cpt.gef",
+            self.test_data_dir / "gef-cpt/cpt2.gef",
+            self.test_data_dir / "gef-xml/cpt.xml",
         ]
         result = parse_gef_files(files)
+        assert isinstance(result, dict)
+
         assert len(result) == 3
         for v in result.values():
             assert isinstance(v, CPTData)
 
     def test_parse_valid_cpt_xml_file(self) -> None:
-        cpt_file = self.test_data_dir / "cpt.xml"
+        cpt_file = self.test_data_dir / "gef-xml/cpt.xml"
         result = parse_gef_files([cpt_file])
         assert isinstance(result, dict)
         assert len(result) == 1
@@ -48,7 +50,7 @@ class TestParseGefFiles:
             assert isinstance(v, CPTData)
 
     def test_parse_cpt_xml_with_multiple_entries(self) -> None:
-        cpt_file = self.test_data_dir / "cpt_multiple.xml"
+        cpt_file = self.test_data_dir / "gef-xml/cpt_multiple.xml"
         result = parse_gef_files([cpt_file])
         assert isinstance(result, dict)
         assert len(result) == 2  # Expecting 2 CPT entries in the XML
@@ -62,7 +64,7 @@ class TestParseGefFiles:
         assert "File not found" in str(exc.value)
 
     def test_not_cpt_type(self) -> None:
-        bore_file = self.test_data_dir / "bore.gef"
+        bore_file = self.test_data_dir / "gef-bore/bore.gef"
         with pytest.raises(ValueError) as exc:
             parse_gef_files([bore_file])
         assert "gef file is not a cpt" in str(exc.value)
@@ -75,8 +77,8 @@ class TestParseGefFiles:
 
     def test_overlapping_hole_ids(self):
         """Test that parse_gef_files raises an error for duplicate hole_ids (from test_id or filename)."""
-        file1 = self.test_data_dir / "cpt.gef"
-        file2 = self.test_data_dir / "cpt_duplicate_test_id.gef"
+        file1 = self.test_data_dir / "gef-cpt/cpt.gef"
+        file2 = self.test_data_dir / "gef-cpt/cpt_duplicate_test_id.gef"
 
         with pytest.raises(ValueError) as exc:
             parse_gef_files([file1, file2])
