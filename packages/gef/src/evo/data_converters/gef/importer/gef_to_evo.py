@@ -20,10 +20,11 @@ from evo.data_converters.common import (
     create_evo_object_service_and_data_client,
     publish_geoscience_objects,
 )
+from evo.data_converters.common.objects.downhole_collection_to_go import DownholeCollectionToGeoscienceObject
 from evo.objects.data import ObjectMetadata
 
 from .parse_gef_files import parse_gef_files
-from .gef_to_downhole_collection import create_downhole_collection
+from .gef_to_downhole_collection import create_from_parsed_gef_cpts
 
 logger = evo.logging.getLogger("data_converters")
 
@@ -67,7 +68,9 @@ def convert_gef(
         publish_object = False
 
     gef_cpt_data = parse_gef_files(filepaths)
-    geoscience_object = create_downhole_collection(gef_cpt_data, data_client)
+    downhole_collection = create_from_parsed_gef_cpts(gef_cpt_data)
+    converter = DownholeCollectionToGeoscienceObject(dc=downhole_collection, data_client=data_client)
+    geoscience_object = converter.convert()
 
     if geoscience_object:
         if geoscience_object.tags is None:
