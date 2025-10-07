@@ -16,10 +16,10 @@ from uuid import uuid4
 
 import pytest
 
-from evo_schemas.objects import DownholeCollection_V1_3_0 as DownholeCollection
-from evo.data_converters.common import (
-    EvoWorkspaceMetadata,
-)
+from evo_schemas.objects import DownholeCollection_V1_3_0 as DownholeCollectionGo
+from evo.data_converters.common import EvoWorkspaceMetadata
+from evo.data_converters.common.objects.downhole_collection import DownholeCollection
+from evo.data_converters.common.objects.downhole_collection_to_go import DownholeCollectionToGeoscienceObject
 from evo.data_converters.gef.importer import convert_gef
 from evo.objects.data import ObjectMetadata
 
@@ -40,11 +40,17 @@ class TestConvertGef:
         return EvoWorkspaceMetadata(workspace_id=str(uuid4()), cache_root=cache_root.name, hub_url=hub_url)
 
     @pytest.fixture
+    def mock_downhole_collection_go(self):
+        """Mock downhole collection geoscience object."""
+        dhc_go = Mock(spec=DownholeCollectionGo)
+        dhc_go.tags = {}
+        return dhc_go
+
+    @pytest.fixture
     def mock_downhole_collection(self):
-        """Mock downhole collection object."""
-        collection = Mock(spec=DownholeCollection)
-        collection.tags = {}
-        return collection
+        """Mock downhole collection intermediary object."""
+        dhc = Mock(spec=DownholeCollection)
+        return dhc
 
     @pytest.fixture
     def mock_object_metadata(self):
@@ -53,10 +59,12 @@ class TestConvertGef:
 
     @patch("evo.data_converters.gef.importer.gef_to_evo.publish_geoscience_objects")
     @patch("evo.data_converters.gef.importer.gef_to_evo.create_evo_object_service_and_data_client")
-    @patch("evo.data_converters.gef.importer.gef_to_evo.create_downhole_collection")
+    @patch("evo.data_converters.gef.importer.gef_to_evo.create_from_parsed_gef_cpts")
     @patch("evo.data_converters.gef.importer.gef_to_evo.parse_gef_files")
+    @patch("evo.data_converters.gef.importer.gef_to_evo.DownholeCollectionToGeoscienceObject")
     def test_convert_gef_with_workspace_metadata_and_hub_url(
         self,
+        mock_converter,
         mock_parse_files,
         mock_create_collection,
         mock_create_clients,
@@ -64,10 +72,14 @@ class TestConvertGef:
         sample_filepaths,
         workspace_metadata,
         mock_downhole_collection,
+        mock_downhole_collection_go,
         mock_object_metadata,
     ):
         """Test conversion with workspace metadata and hub_url - should publish."""
         mock_create_clients.return_value = (Mock(), Mock())
+        mock_converter.return_value = Mock(
+            spec=DownholeCollectionToGeoscienceObject, convert=Mock(return_value=mock_downhole_collection_go)
+        )
         mock_parse_files.return_value = Mock()
         mock_create_collection.return_value = mock_downhole_collection
         mock_publish.return_value = mock_object_metadata
@@ -85,4 +97,4 @@ class TestConvertGef:
             "InputType": "GEF-CPT",
         }
         for key, value in expected_tags.items():
-            assert mock_downhole_collection.tags[key] == value
+            assert mock_downhole_collection_go.tags[key] == value
