@@ -22,34 +22,11 @@ class DownholeCollection:
     Separates collar information (stored once per hole) from measurement data (stored once per measurement).
     """
 
-    # Data
+    # Hole collar information (one row per hole)
     collars: pd.DataFrame
-    """
-    Hole collar information (one row per hole)
 
-    Required columns:
-        - hole_index: int - Unique identifier for each row, 1-based
-        - hole_id: str - Unique identifier for each survey
-        - x: float - Easting coordinate
-        - y: float - Northing coordinate
-        - z: float - Elevation at collar
-        - final_depth: float - ?
-    """
-
+    # Downhole survey data (one row per measurement point across all holes)
     measurements: pd.DataFrame
-    """
-    Downhole survey data (one row per measurement point across all holes)
-
-    Columns:
-        1: hole_index: int - Links to collars.hole_index
-    For a distance table:
-        2: penetrationLength: float - depth of measurement
-    For an interval table:
-        2: from: float - ?
-        3: to: float - ?
-    Measurements, e.g.
-        n: coneResistance: float - cone resistance at measurement depth
-    """
 
     # Metadata
     name: str
@@ -63,6 +40,49 @@ class DownholeCollection:
     desurvey_method: str | None = None
 
     extensions: dict[str, typing.Any] | None = None
+
+    def is_collars_valid(self) -> bool:
+        # Check collars is a pandas dataframe
+        if not isinstance(self.collars, pd.DataFrame):
+            return False
+
+        collars_schema: dict[str, str] = {
+            # Unique identifier for each row, 1-based
+            "hole_index": "int",
+            # Unique identifier for each survey
+            "hole_id": "str",
+            # Easting coordinate
+            "x": "float",
+            # Northing coordinate
+            "y": "float",
+            # Elevation at collar
+            "z": "float",
+            # Depth of final measurement
+            "final_depth": "float",
+        }
+
+        # Check columns exist
+        if not all(col in self.collars.columns for col in collars_schema.keys()):
+            return False
+
+        # Check data is of expected type
+        if not self.is_schema_valid(self.collars, collars_schema):
+            return False
+
+        return True
+
+    def is_schema_valid(self, df: pd.DataFrame, schema: dict[str, str]) -> bool:
+        for col, expected_type in schema.items():
+            actual_dtype = df[col].dtype
+
+            if expected_type == "int" and not pd.api.types.is_integer_dtype(actual_dtype):
+                return False
+            elif expected_type == "float" and not pd.api.types.is_float_dtype(actual_dtype):
+                return False
+            elif expected_type == "str" and not pd.api.types.is_string_dtype(actual_dtype) and actual_dtype != "object":
+                return False
+
+        return True
 
     def is_distance(self) -> bool:
         """Check if measurements use a distance-based format."""

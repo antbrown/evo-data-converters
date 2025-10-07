@@ -66,4 +66,15 @@ def create_from_parsed_gef_cpts(parsed_cpt_files: dict[str, CPTData]) -> Downhol
     else:
         measurements = pd.DataFrame()
 
-    return DownholeCollection(name="madeupname", collars=collars, measurements=measurements, epsg_code=epsg_code)
+    collection_name = get_collection_name_from_collars(collar_rows)
+
+    return DownholeCollection(name=collection_name, collars=collars, measurements=measurements, epsg_code=epsg_code)
+
+
+def get_collection_name_from_collars(collar_rows: list[dict[str, typing.Any]]) -> str:
+    if not collar_rows:
+        return ""
+    elif len(collar_rows) == 1:
+        return collar_rows[0]["hole_id"]
+    else:
+        return f"{collar_rows[0]['hole_id']}...{collar_rows[-1]['hole_id']}"
