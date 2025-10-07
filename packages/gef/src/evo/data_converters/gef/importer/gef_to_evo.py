@@ -69,7 +69,7 @@ def convert_gef(
 
     gef_cpt_data = parse_gef_files(filepaths)
     downhole_collection = create_from_parsed_gef_cpts(gef_cpt_data)
-    converter = DownholeCollectionToGeoscienceObject(dc=downhole_collection, data_client=data_client)
+    converter = DownholeCollectionToGeoscienceObject(dhc=downhole_collection, data_client=data_client)
     geoscience_object = converter.convert()
 
     if geoscience_object:
