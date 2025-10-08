@@ -19,6 +19,7 @@ dependencies = [
     "pyarrow",
     "requests",
     "scipy",
+    "pandas>=2.3.1",
 ]
 
 [project.urls]
