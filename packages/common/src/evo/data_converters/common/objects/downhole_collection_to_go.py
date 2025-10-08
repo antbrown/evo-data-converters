@@ -297,7 +297,7 @@ class DownholeCollectionToGeoscienceObject:
         """Create a table for each attribute and their measurements"""
         attribute_tables = {}
         attribute_schema = pa.schema([("data", pa.float64())])
-        for attribute_name in self.dhc.measurements[2:]:
+        for attribute_name in self.dhc.measurements.columns[2:]:
             attribute_df = self.dhc.measurements[[attribute_name]].rename(columns={attribute_name: "data"})
             attribute_tables[attribute_name] = pa.Table.from_pandas(attribute_df, schema=attribute_schema)
         return attribute_tables
