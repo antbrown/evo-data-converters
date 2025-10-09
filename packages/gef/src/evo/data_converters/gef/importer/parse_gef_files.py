@@ -49,7 +49,7 @@ def parse_gef_file(filepath: str | Path) -> list[CPTData]:
             return multiple_cpt_data
 
         elif ext == ".gef":
-            cpt_data = read_cpt(filepath)
+            cpt_data = read_cpt(filepath, replace_column_voids=False)
             # GEF test ID is in alias.
             # https://github.com/cemsbv/pygef/blob/6002e174b154a6ef7726f7a3aa467d6ada22be92/src/pygef/shim.py#L106
             check_for_required_columns(cpt_data, filepath)
