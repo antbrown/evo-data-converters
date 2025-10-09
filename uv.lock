@@ -13,6 +13,7 @@ members = [
     "evo-data-converters",
     "evo-data-converters-common",
     "evo-data-converters-duf",
+    "evo-data-converters-gef",
     "evo-data-converters-gocad",
     "evo-data-converters-omf",
     "evo-data-converters-resqml",
@@ -721,6 +722,7 @@ source = { editable = "." }
 dependencies = [
     { name = "evo-data-converters-common" },
     { name = "evo-data-converters-duf", marker = "sys_platform == 'win32'" },
+    { name = "evo-data-converters-gef" },
     { name = "evo-data-converters-gocad" },
     { name = "evo-data-converters-omf" },
     { name = "evo-data-converters-resqml" },
@@ -745,6 +747,7 @@ dev = [
 requires-dist = [
     { name = "evo-data-converters-common", editable = "packages/common" },
     { name = "evo-data-converters-duf", marker = "sys_platform == 'win32'", editable = "packages/duf" },
+    { name = "evo-data-converters-gef", editable = "packages/gef" },
     { name = "evo-data-converters-gocad", editable = "packages/gocad" },
     { name = "evo-data-converters-omf", editable = "packages/omf" },
     { name = "evo-data-converters-resqml", editable = "packages/resqml" },
@@ -831,6 +834,35 @@ requires-dist = [
 dev = [
     { name = "pytest" },
     { name = "requests-mock" },
+]
+
+[[package]]
+name = "evo-data-converters-gef"
+version = "0.0.1"
+source = { editable = "packages/gef" }
+dependencies = [
+    { name = "evo-data-converters-common" },
+    { name = "pandas" },
+    { name = "pygef", extra = ["plot"] },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-mock" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "evo-data-converters-common", editable = "packages/common" },
+    { name = "pandas" },
+    { name = "pygef", extras = ["plot"] },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-mock", specifier = ">=3.15.1" },
 ]
 
 [[package]]
@@ -1182,6 +1214,17 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/31/8fbc5af2d183bff20f21aa743b4088eac4445d2bb1cdece449ae80e4e2d1/frozenlist-1.7.0-cp313-cp313t-win32.whl", hash = "sha256:3a14027124ddb70dfcee5148979998066897e79f89f64b13328595c4bdf77c81", size = 43059, upload-time = "2025-06-09T23:02:02.072Z" },
     { url = "https://files.pythonhosted.org/packages/bb/ed/41956f52105b8dbc26e457c5705340c67c8cc2b79f394b79bffc09d0e938/frozenlist-1.7.0-cp313-cp313t-win_amd64.whl", hash = "sha256:3bf8010d71d4507775f658e9823210b7427be36625b387221642725b515dcf3e", size = 47516, upload-time = "2025-06-09T23:02:03.779Z" },
     { url = "https://files.pythonhosted.org/packages/ee/45/b82e3c16be2182bff01179db177fe144d58b5dc787a7d4492c6ed8b9317f/frozenlist-1.7.0-py3-none-any.whl", hash = "sha256:9a5af342e34f7e97caf8c995864c7a396418ae2859cc6fdf1b1073020d516a7e", size = 13106, upload-time = "2025-06-09T23:02:34.204Z" },
+]
+
+[[package]]
+name = "gef-file-to-map"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1b/0a/d76c38bac192e8d8c6db47969ac2431630575158b89f0d967701f8a524dc/gef_file_to_map-0.2.1.tar.gz", hash = "sha256:fd25f754c75704fa43dd33941f4234ccde523d4b3a8345fffc45462ae0d6aef2", size = 57777, upload-time = "2025-07-22T03:20:36.818Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e5/ef/7046b7fd15487262839553c9de25c27c6d2968b737025ba1e63236f5890c/gef_file_to_map-0.2.1-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:a8fadbe8834e98a0a70079a8b53e62ad6e68589e6df45b1681ec2c9dff242a47", size = 172129, upload-time = "2025-07-22T03:20:37.765Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/52/3f158cc907a000f7f8d670eceb0eaac82c1618776a104e5ea606346965ba/gef_file_to_map-0.2.1-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:33e37f3120e2fc5dbbd91ac3a8c4efcd6213ecc22617cd7c1361d4122cd558ac", size = 194958, upload-time = "2025-07-22T03:20:35.512Z" },
+    { url = "https://files.pythonhosted.org/packages/57/ba/6e06bc736d44cd32b3bb236bc3af5fdce3a50e5d3bc0099bd629d75199ca/gef_file_to_map-0.2.1-cp37-abi3-win_amd64.whl", hash = "sha256:e74726c6b649389e1f0abc1b777854fd33ba3cd8dc5aa096fb3b9aa75aecc8b0", size = 99759, upload-time = "2025-07-22T03:20:39.096Z" },
 ]
 
 [[package]]
@@ -2592,6 +2635,20 @@ wheels = [
 ]
 
 [[package]]
+name = "polars"
+version = "1.33.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/da/8246f1d69d7e49f96f0c5529057a19af1536621748ef214bbd4112c83b8e/polars-1.33.1.tar.gz", hash = "sha256:fa3fdc34eab52a71498264d6ff9b0aa6955eb4b0ae8add5d3cb43e4b84644007", size = 4822485, upload-time = "2025-09-09T08:37:49.062Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/19/79/c51e7e1d707d8359bcb76e543a8315b7ae14069ecf5e75262a0ecb32e044/polars-1.33.1-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:3881c444b0f14778ba94232f077a709d435977879c1b7d7bd566b55bd1830bb5", size = 39132875, upload-time = "2025-09-09T08:36:38.609Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/15/1094099a1b9cb4fbff58cd8ed3af8964f4d22a5b682ea0b7bb72bf4bc3d9/polars-1.33.1-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:29200b89c9a461e6f06fc1660bc9c848407640ee30fe0e5ef4947cfd49d55337", size = 35638783, upload-time = "2025-09-09T08:36:43.748Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/b9/9ac769e4d8e8f22b0f2e974914a63dd14dec1340cd23093de40f0d67d73b/polars-1.33.1-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:444940646e76342abaa47f126c70e3e40b56e8e02a9e89e5c5d1c24b086db58a", size = 39742297, upload-time = "2025-09-09T08:36:47.132Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/26/4c5da9f42fa067b2302fe62bcbf91faac5506c6513d910fae9548fc78d65/polars-1.33.1-cp39-abi3-manylinux_2_24_aarch64.whl", hash = "sha256:094a37d06789286649f654f229ec4efb9376630645ba8963b70cb9c0b008b3e1", size = 36684940, upload-time = "2025-09-09T08:36:50.561Z" },
+    { url = "https://files.pythonhosted.org/packages/06/a6/dc535da476c93b2efac619e04ab81081e004e4b4553352cd10e0d33a015d/polars-1.33.1-cp39-abi3-win_amd64.whl", hash = "sha256:c9781c704432a2276a185ee25898aa427f39a904fbe8fde4ae779596cdbd7a9e", size = 39456676, upload-time = "2025-09-09T08:36:54.612Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/4e/a4300d52dd81b58130ccadf3873f11b3c6de54836ad4a8f32bac2bd2ba17/polars-1.33.1-cp39-abi3-win_arm64.whl", hash = "sha256:c3cfddb3b78eae01a218222bdba8048529fef7e14889a71e33a5198644427642", size = 35445171, upload-time = "2025-09-09T08:36:58.043Z" },
+]
+
+[[package]]
 name = "pre-commit"
 version = "4.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2923,6 +2980,25 @@ wheels = [
 ]
 
 [[package]]
+name = "pygef"
+version = "0.12.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "gef-file-to-map" },
+    { name = "lxml" },
+    { name = "polars" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/96/66/e55e70e5cf8227b1253869dc321cf1a7116f79db4adbc45d6792fa935d3d/pygef-0.12.1.tar.gz", hash = "sha256:212b2f95ad0d0490ef58bf2d0891b7245a7beecea706592fdebb987233f8a40a", size = 34506, upload-time = "2025-07-22T10:20:50.149Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d3/a3/78ab9891a32611e789bfea985deea0193a3c1879bfc4bdad3f6dd3546063/pygef-0.12.1-py3-none-any.whl", hash = "sha256:268042bc0f61991ef87cdab78bf69160f854d86232b19fa76a509cadee3f0147", size = 36364, upload-time = "2025-07-22T10:20:48.871Z" },
+]
+
+[package.optional-dependencies]
+plot = [
+    { name = "matplotlib" },
+]
+
+[[package]]
 name = "pygments"
 version = "2.19.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2965,6 +3041,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/08/ba/45911d754e8eba3d5a841a5ce61a65a685ff1798421ac054f85aa8747dfb/pytest-8.4.1.tar.gz", hash = "sha256:7c67fd69174877359ed9371ec3af8a3d2b04741818c51e5e99cc1742251fa93c", size = 1517714, upload-time = "2025-06-18T05:48:06.109Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/29/16/c8a903f4c4dffe7a12843191437d7cd8e32751d5de349d45d3fe69544e87/pytest-8.4.1-py3-none-any.whl", hash = "sha256:539c70ba6fcead8e78eebbf1115e8b589e7565830d7d006a8723f19ac8a0afb7", size = 365474, upload-time = "2025-06-18T05:48:03.955Z" },
+]
+
+[[package]]
+name = "pytest-mock"
+version = "3.15.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/68/14/eb014d26be205d38ad5ad20d9a80f7d201472e08167f0bb4361e251084a9/pytest_mock-3.15.1.tar.gz", hash = "sha256:1849a238f6f396da19762269de72cb1814ab44416fa73a8686deac10b0d87a0f", size = 34036, upload-time = "2025-09-16T16:37:27.081Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5a/cc/06253936f4a7fa2e0f48dfe6d851d9c56df896a9ab09ac019d70b760619c/pytest_mock-3.15.1-py3-none-any.whl", hash = "sha256:0a25e2eb88fe5168d535041d09a4529a188176ae608a6d249ee65abc0949630d", size = 10095, upload-time = "2025-09-16T16:37:25.734Z" },
 ]
 
 [[package]]
