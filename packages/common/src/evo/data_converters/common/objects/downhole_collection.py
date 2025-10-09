@@ -28,6 +28,13 @@ class DownholeCollection:
     # Downhole survey data (one row per measurement point across all holes)
     measurements: pd.DataFrame
 
+    nan_values_by_attribute: dict
+    """
+    A dict keyed on 'attribute_name' with items which are a list of unique
+    column void values that represent a NaN value which can be present
+    for that attribute, across all of the holes in the dataset
+    """
+
     # Metadata
     name: str
     epsg_code: int

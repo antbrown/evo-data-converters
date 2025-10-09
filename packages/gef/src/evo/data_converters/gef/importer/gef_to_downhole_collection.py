@@ -16,6 +16,8 @@ import polars as pl
 import typing
 import evo.logging
 
+from collections import defaultdict
+
 logger = evo.logging.getLogger("data_converters")
 
 
@@ -39,6 +41,7 @@ def create_from_parsed_gef_cpts(parsed_cpt_files: dict[str, CPTData]) -> Downhol
     epsg_code: int | None = None
     collar_rows: list[dict[str, typing.Any]] = []
     measurement_dfs: list[pl.DataFrame] = []
+    nan_values_by_attribute: dict[str, list] = defaultdict(list)
 
     for hole_index, (hole_id, cpt_data) in enumerate(parsed_cpt_files.items(), start=1):
         # Extract and validate EPSG code
@@ -79,6 +82,10 @@ def create_from_parsed_gef_cpts(parsed_cpt_files: dict[str, CPTData]) -> Downhol
         measurement_dfs.append(measurements)
         logger.debug(f"Processed {hole_id}: {len(measurements)} measurements")
 
+        # update the nan values from this hole by attribute name
+        for attribute_name, value in cpt_data.column_void_mapping.items():
+            nan_values_by_attribute[attribute_name].append(value)
+
     if epsg_code is None:
         raise ValueError("Could not find valid epsg code in CPT files")
 
@@ -104,7 +111,13 @@ def create_from_parsed_gef_cpts(parsed_cpt_files: dict[str, CPTData]) -> Downhol
 
     collection_name = get_collection_name_from_collars(collar_rows)
 
-    return DownholeCollection(name=collection_name, collars=collars, measurements=measurements, epsg_code=epsg_code)
+    return DownholeCollection(
+        name=collection_name,
+        collars=collars,
+        measurements=measurements,
+        nan_values_by_attribute=nan_values_by_attribute,
+        epsg_code=epsg_code,
+    )
 
 
 def _extract_epsg_code(cpt_data: CPTData, hole_id: str) -> int:
