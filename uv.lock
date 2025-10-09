@@ -3002,16 +3002,16 @@ wheels = [
 
 [[package]]
 name = "pygef"
-version = "0.12.1"
+version = "0.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "gef-file-to-map" },
     { name = "lxml" },
     { name = "polars" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/96/66/e55e70e5cf8227b1253869dc321cf1a7116f79db4adbc45d6792fa935d3d/pygef-0.12.1.tar.gz", hash = "sha256:212b2f95ad0d0490ef58bf2d0891b7245a7beecea706592fdebb987233f8a40a", size = 34506, upload-time = "2025-07-22T10:20:50.149Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/cd/ebe7eed1dbe55f9fd4a04fd5780ed7e1da2dae81815771a0f4d2cc523976/pygef-0.13.0.tar.gz", hash = "sha256:528c661c753ea5e0033a5d228d3441715a1fda78577f71835342bbd7a1e55d91", size = 35242, upload-time = "2025-10-13T06:45:58.343Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d3/a3/78ab9891a32611e789bfea985deea0193a3c1879bfc4bdad3f6dd3546063/pygef-0.12.1-py3-none-any.whl", hash = "sha256:268042bc0f61991ef87cdab78bf69160f854d86232b19fa76a509cadee3f0147", size = 36364, upload-time = "2025-07-22T10:20:48.871Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/4c/c5a96b7f0bb6245aee688ad97f08d2d8c5dc7dd5e30a00351ef87c09535c/pygef-0.13.0-py3-none-any.whl", hash = "sha256:7a175a6417ce15fe246b5d7f521b4ffb39b41f2ced1a745a2cea1be72c735bba", size = 36841, upload-time = "2025-10-13T06:45:57.056Z" },
 ]
 
 [package.optional-dependencies]

@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 import pytest
+import polars as pl
 from pathlib import Path
 from pygef.cpt import CPTData
 from evo.data_converters.gef.importer.parse_gef_files import parse_gef_files
@@ -83,3 +84,46 @@ class TestParseGefFiles:
         with pytest.raises(ValueError) as exc:
             parse_gef_files([file1, file2])
         assert "Duplicate ID" in str(exc.value)
+
+    def test_parse_cpt_gef_files_with_replace_column_voids_enabled(self) -> None:
+        cpt_file = self.test_data_dir / "gef-cpt/cpt_voids.gef"
+        result = parse_gef_files([cpt_file], replace_column_voids=True)
+        cpt_data = next(iter(result.values()))
+        assert cpt_data.data.shape == (4, 4)
+
+        df = pl.DataFrame(
+            {
+                "penetrationLength": [0.01, 0.03, 0.05, 0.07],
+                "coneResistance": [0.013, 1.253, 2.493, 14.766],
+                "correctedConeResistance": [0.013, 0.696, 2.496, 14.808],
+                "depthOffset": [-0.10, -0.12, -0.14, -0.16],
+            }
+        )
+
+        for column in df.columns:
+            assert cpt_data.data[column].round(4).equals(df[column].round(4), null_equal=True)
+
+    def test_parse_cpt_gef_files_with_replace_column_voids_disabled(self) -> None:
+        cpt_file = self.test_data_dir / "gef-cpt/cpt_voids.gef"
+        result = parse_gef_files([cpt_file], replace_column_voids=False)
+        cpt_data = next(iter(result.values()))
+        assert cpt_data.data.shape == (6, 4)
+
+        df = pl.DataFrame(
+            {
+                "penetrationLength": [0.00, 0.01, 0.03, 0.05, 0.07, 0.09],
+                "coneResistance": [-999999.0, 0.013, -999999.0, 2.493, 14.766, -999999.0],
+                "correctedConeResistance": [
+                    -999999.0,
+                    0.013,
+                    0.696,
+                    2.496,
+                    14.808,
+                    -999999.0,
+                ],
+                "depthOffset": [-0.09, -0.10, -0.12, -0.14, -0.16, -0.18],
+            }
+        )
+
+        for column in df.columns:
+            assert cpt_data.data[column].round(4).equals(df[column].round(4), null_equal=True)

@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import pandas as pd
 import typing
 
@@ -28,13 +28,6 @@ class DownholeCollection:
     # Downhole survey data (one row per measurement point across all holes)
     measurements: pd.DataFrame
 
-    nan_values_by_attribute: dict
-    """
-    A dict keyed on 'attribute_name' with items which are a list of unique
-    column void values that represent a NaN value which can be present
-    for that attribute, across all of the holes in the dataset
-    """
-
     # Metadata
     name: str
     epsg_code: int
@@ -47,6 +40,13 @@ class DownholeCollection:
     desurvey_method: str | None = None
 
     extensions: dict[str, typing.Any] | None = None
+
+    nan_values_by_attribute: dict = field(default_factory=dict)
+    """
+    A dict keyed on 'attribute_name' with items which are a list of unique
+    column void values that represent a NaN value which can be present
+    for that attribute, across all of the holes in the dataset
+    """
 
     def is_collars_valid(self) -> bool:
         # Check collars is a pandas dataframe
