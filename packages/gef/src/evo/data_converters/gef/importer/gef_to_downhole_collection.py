@@ -95,7 +95,7 @@ def create_from_parsed_gef_cpts(parsed_cpt_files: dict[str, CPTData]) -> Downhol
 
     if measurement_dfs:
         measurements_pl = pl.concat(measurement_dfs, how="vertical")
-        measurements = measurements_pl.to_pandas(use_pyarrow_extension_array=True)
+        measurements = measurements_pl.to_pandas()
         logger.info(f"Creating collection with {len(measurements)} total measurements")
     else:
         # Create empty DataFrame with proper schema
