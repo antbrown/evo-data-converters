@@ -19,7 +19,9 @@ import pytest
 from evo_schemas.objects import DownholeCollection_V1_3_0 as DownholeCollectionGo
 from evo.data_converters.common import EvoWorkspaceMetadata
 from evo.data_converters.common.objects.downhole_collection import DownholeCollection
-from evo.data_converters.common.objects.downhole_collection_to_go import DownholeCollectionToGeoscienceObject
+from evo.data_converters.common.objects.downhole_collection_to_geoscience_object import (
+    DownholeCollectionToGeoscienceObject,
+)
 from evo.data_converters.gef.importer import convert_gef
 from evo.objects.data import ObjectMetadata
 
