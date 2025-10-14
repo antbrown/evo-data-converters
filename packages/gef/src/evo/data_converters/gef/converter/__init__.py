@@ -9,8 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .gef_to_evo import convert_gef
+from .gef_to_downhole_collection import create_from_parsed_gef_cpts
+from .parse_gef_files import parse_gef_files
 
 __all__ = [
-    "convert_gef",
+    "create_from_parsed_gef_cpts",
+    "parse_gef_files",
 ]

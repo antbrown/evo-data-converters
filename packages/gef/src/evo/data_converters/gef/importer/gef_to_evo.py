@@ -23,8 +23,7 @@ from evo.data_converters.common import (
 from evo.data_converters.common.objects.downhole_collection_to_go import DownholeCollectionToGeoscienceObject
 from evo.objects.data import ObjectMetadata
 
-from .parse_gef_files import parse_gef_files
-from .gef_to_downhole_collection import create_from_parsed_gef_cpts
+from evo.data_converters.gef.converter import create_from_parsed_gef_cpts, parse_gef_files
 
 logger = evo.logging.getLogger("data_converters")
 
