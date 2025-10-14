@@ -2,7 +2,7 @@ import pytest
 import polars as pl
 from unittest.mock import Mock, patch
 from evo.data_converters.common.objects.downhole_collection import DownholeCollection
-from evo.data_converters.gef.importer.gef_to_downhole_collection import (
+from evo.data_converters.gef.converter.gef_to_downhole_collection import (
     _calculate_final_depth,
     _extract_epsg_code,
     _validate_location_attributes,
@@ -315,7 +315,7 @@ class TestCreateFromParsedGefCpts:
         # And it should be the correct value (1, not 99)
         assert all(result.measurements["hole_index"] == 1)
 
-    @patch("evo.data_converters.gef.importer.gef_to_downhole_collection.logger")
+    @patch("evo.data_converters.gef.converter.gef_to_downhole_collection.logger")
     def test_logging_for_successful_processing(self, mock_logger, mock_cpt_data) -> None:
         parsed_files = {"CPT-001": mock_cpt_data}
 

@@ -12,7 +12,7 @@
 import pytest
 from pathlib import Path
 from pygef.cpt import CPTData
-from evo.data_converters.gef.importer.parse_gef_files import parse_gef_files
+from evo.data_converters.gef.converter.parse_gef_files import parse_gef_files
 
 
 class TestParseGefFiles:
