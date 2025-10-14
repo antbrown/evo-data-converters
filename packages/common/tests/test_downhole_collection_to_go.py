@@ -3,7 +3,9 @@ import pandas as pd
 import pyarrow as pa
 from unittest.mock import Mock, MagicMock
 from evo.data_converters.common.objects.downhole_collection import DownholeCollection
-from evo.data_converters.common.objects.downhole_collection_to_go import DownholeCollectionToGeoscienceObject
+from evo.data_converters.common.objects.downhole_collection_to_geoscience_object import (
+    DownholeCollectionToGeoscienceObject,
+)
 
 
 @pytest.fixture

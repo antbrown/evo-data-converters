@@ -20,7 +20,9 @@ from evo.data_converters.common import (
     create_evo_object_service_and_data_client,
     publish_geoscience_objects,
 )
-from evo.data_converters.common.objects.downhole_collection_to_go import DownholeCollectionToGeoscienceObject
+from evo.data_converters.common.objects.downhole_collection_to_geoscience_object import (
+    DownholeCollectionToGeoscienceObject,
+)
 from evo.objects.data import ObjectMetadata
 
 from evo.data_converters.gef.converter import create_from_parsed_gef_cpts, parse_gef_files
