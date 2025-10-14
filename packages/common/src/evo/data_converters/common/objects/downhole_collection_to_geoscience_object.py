@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from dataclasses import dataclass
 import evo.logging
 from evo.objects.utils.data import ObjectDataClient
 from evo_schemas.components import (
@@ -32,7 +31,7 @@ from evo_schemas.elements import (
     UnitLength_V1_0_1_UnitCategories as UnitLength_UnitCategories,
 )
 from evo_schemas.objects import (
-    DownholeCollection_V1_3_1 as DownholeCollectionGo,
+    DownholeCollection_V1_3_1 as DownholeCollectionGeoscienceObject,
     DownholeCollection_V1_3_1_Location as DownholeCollection_Location,
 )
 import pyarrow as pa
@@ -45,12 +44,15 @@ DIP: float = 90.0  # Positive dip = down
 logger = evo.logging.getLogger("data_converters")
 
 
-@dataclass
 class DownholeCollectionToGeoscienceObject:
     dhc: DownholeCollection
     data_client: ObjectDataClient
 
-    def convert(self) -> DownholeCollectionGo:
+    def __init__(self, dhc: DownholeCollection, data_client: ObjectDataClient) -> None:
+        self.dhc = dhc
+        self.data_client = data_client
+
+    def convert(self) -> DownholeCollectionGeoscienceObject:
         """Converts the downhole collection into a geoscience object"""
         logger.debug("Converting to Geoscience Object.")
 
@@ -62,7 +64,7 @@ class DownholeCollectionToGeoscienceObject:
         dhc_location = self.create_dhc_location()
         dhc_collections = self.create_dhc_collections()
 
-        dhc_go = DownholeCollectionGo(
+        dhc_go = DownholeCollectionGeoscienceObject(
             # Base Object
             name=self.dhc.name,
             uuid=None,
