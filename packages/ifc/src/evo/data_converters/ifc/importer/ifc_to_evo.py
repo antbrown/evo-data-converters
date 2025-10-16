@@ -11,6 +11,9 @@
 
 from typing import TYPE_CHECKING, Optional
 
+from evo_schemas.components import BaseSpatialDataProperties_V1_0_1
+
+import evo.logging
 from evo.data_converters.common import (
     EvoWorkspaceMetadata,
     create_evo_object_service_and_data_client,
@@ -20,6 +23,9 @@ from evo.objects.data import ObjectMetadata
 
 from .parse_ifc_files import parse_ifc_files
 from .ifc_to_spatial_data import convert_spatial_data
+
+
+logger = evo.logging.getLogger("data_converters")
 
 if TYPE_CHECKING:
     from evo.notebooks import ServiceManagerWidget
@@ -31,7 +37,7 @@ def convert_ifc(
     service_manager_widget: Optional["ServiceManagerWidget"] = None,
     tags: Optional[dict[str, str]] = None,
     upload_path: str = "",
-) -> list[ObjectMetadata]:
+) -> list[ObjectMetadata | BaseSpatialDataProperties_V1_0_1]:
     """Converts an IFC file into Geoscience Objects.
 
     :param filepath: Path to the IFC file.
@@ -51,6 +57,7 @@ def convert_ifc(
     :raise MissingConnectionDetailsError: If no connections details could be derived.
     :raise ConflictingConnectionDetailsError: If both evo_workspace_metadata and service_manager_widget present.
     """
+    publish_objects = True
     geoscience_objects = []
 
     # create a service and data clients to handle upload to the Seequent Evo API
@@ -58,6 +65,9 @@ def convert_ifc(
         evo_workspace_metadata=evo_workspace_metadata,
         service_manager_widget=service_manager_widget,
     )
+    if evo_workspace_metadata and not evo_workspace_metadata.hub_url:
+        logger.debug("Publishing objects will be skipped due to missing hub_url.")
+        publish_objects = False
 
     # Read the IFC files and get the parsed IFC models
     models = parse_ifc_files(filepaths)
@@ -79,12 +89,15 @@ def convert_ifc(
                 geoscience_objects.extend(converted_geoscience_objects)
 
     # Publish the found geoscience objects to Evo
-    objects_metadata = publish_geoscience_objects(
-        geoscience_objects,
-        object_service_client,
-        data_client,
-        upload_path,
-    )
+    objects_metadata = None
+    if publish_objects:
+        logger.debug("Publishing Geoscience Objects")
+        objects_metadata = publish_geoscience_objects(
+            geoscience_objects,
+            object_service_client,
+            data_client,
+            upload_path,
+        )
 
     # Return the publishing response
-    return objects_metadata
+    return objects_metadata if objects_metadata else geoscience_objects
