@@ -37,6 +37,7 @@ def convert_gef(
     service_manager_widget: Optional["ServiceManagerWidget"] = None,
     tags: Optional[dict[str, str]] = None,
     upload_path: str = "",
+    overwrite_existing_objects: bool = False,
 ) -> DownholeCollection | ObjectMetadata | None:
     """Converts a collection of GEF-CPT files into a Downhole Collection Geoscience Object.
 
@@ -45,6 +46,7 @@ def convert_gef(
     :param service_manager_widget: (Optional) Service Manager Widget for use in jupyter notebooks.
     :param tags: (Optional) Dict of tags to add to the Geoscience Object.
     :param upload_path: (Optional) Path object will be published under.
+    :param overwrite_existing_objects: (Optional) Whether existing objects will be overwritten with a new version.
 
     One of evo_workspace_metadata or service_manager_widget is required.
 
@@ -84,7 +86,7 @@ def convert_gef(
     if publish_object:
         logger.debug("Publishing Geoscience Object")
         object_metadata = publish_geoscience_objects(
-            [geoscience_object], object_service_client, data_client, upload_path
+            [geoscience_object], object_service_client, data_client, upload_path, overwrite_existing_objects
         )
 
     return object_metadata if object_metadata else geoscience_object
