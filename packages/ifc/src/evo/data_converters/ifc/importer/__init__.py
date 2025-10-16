@@ -10,7 +10,11 @@
 #  limitations under the License.
 
 from .parse_ifc_files import parse_ifc_files
+from .ifc_to_evo import convert_ifc
+from .ifc_to_spatial_data import convert_spatial_data
 
 __all__ = [
+    "convert_ifc",
+    "convert_spatial_data",
     "parse_ifc_files",
 ]
