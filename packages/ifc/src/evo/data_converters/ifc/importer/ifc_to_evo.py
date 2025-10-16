@@ -18,25 +18,26 @@ from evo.data_converters.common import (
 )
 from evo.objects.data import ObjectMetadata
 
-from . import parse_ifc_files
+from .parse_ifc_files import parse_ifc_files
+from .ifc_to_spatial_data import convert_spatial_data
 
 if TYPE_CHECKING:
     from evo.notebooks import ServiceManagerWidget
 
 
 def convert_ifc(
-    filepath: str,
-    epsg_code: int,
+    filepaths: list[str],
     evo_workspace_metadata: Optional[EvoWorkspaceMetadata] = None,
     service_manager_widget: Optional["ServiceManagerWidget"] = None,
+    tags: Optional[dict[str, str]] = None,
     upload_path: str = "",
 ) -> list[ObjectMetadata]:
     """Converts an IFC file into Geoscience Objects.
 
     :param filepath: Path to the IFC file.
-    :param epsg_code: The EPSG code to use when creating a Coordinate Reference System object.
     :param evo_workspace_metadata: (Optional) Evo workspace metadata.
     :param service_manager_widget: (Optional) Service Manager Widget for use in jupyter notebooks.
+    :param tags: (Optional) Dict of tags to add to the Geoscience Object.
     :param upload_path: (Optional) Path objects will be published under.
 
     One of evo_workspace_metadata or service_manager_widget is required.
@@ -58,20 +59,24 @@ def convert_ifc(
         service_manager_widget=service_manager_widget,
     )
 
-    # Read the IFC file and get the parsed IFC model
-    model = parse_ifc_files([filepath])[0]
+    # Read the IFC files and get the parsed IFC models
+    models = parse_ifc_files(filepaths)
 
-    # Loop through the elements found in the parsed model - converting any point set elements into to
+    # Loop through the elements found in the parsed models - converting any IfcProduct into
     # Evo geoscience objects
-    for element in model:
-        geoscience_object = None
-        if element.is_a() == "IfcPoint":
-            # Call the specific pointset converter here
-            # geoscience_object = _convert_pointset(element, reader, data_client, epsg_code)
-            pass
+    for model in models:
+        for product in model.by_type("IfcProduct"):
+            # Call the spatial converter
+            converted_geoscience_objects = convert_spatial_data(product)
+            for geoscience_object in converted_geoscience_objects:
+                if geoscience_object.tags is None:
+                    geoscience_object.tags = {}
+                geoscience_object.tags["Source"] = "IFC files (via Evo Data Converters)"
+                geoscience_object.tags["Stage"] = "Experimental"
+                geoscience_object.tags["InputType"] = "IFC"
 
-        if geoscience_object is not None:
-            geoscience_objects.append(geoscience_object)
+            if converted_geoscience_objects:
+                geoscience_objects.extend(converted_geoscience_objects)
 
     # Publish the found geoscience objects to Evo
     objects_metadata = publish_geoscience_objects(
