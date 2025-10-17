@@ -53,9 +53,9 @@
 #MEASUREMENTVAR= 1, 1000, mm2 (vierkante millimeter), oppervlakte conuspunt
 #MEASUREMENTVAR= 2, 15000, mm2 (vierkante millimeter), oppervlakte kleefmantel
 #MEASUREMENTVAR= 12, -, -, sondeermethode
-#MEASUREMENTVAR= 13, 0.02, m (meter), voorgeboord tot
-#MEASUREMENTVAR= 16, 26.520, m (meter), einddiepte
-#MEASUREMENTVAR= 17, -, -, stopcriterium
+#MEASUREMENTVAR= 13, 0.00, m (meter), predrilled depth
+#MEASUREMENTVAR= 16, 7.439, m (meter), final depth
+#MEASUREMENTVAR= 17, 0, final depth, stop criterion
 #PROJECTID= BRO
 #RECORDSEPARATOR= !
 #REPORTCODE= GEF-CPT-Report, 1, 1, 2
@@ -63,7 +63,7 @@
 #STARTTIME= -, -, -
 #TESTID= example.gef
 #XYID= 28992, 99682.590, 442155.600
-#ZID= 31000, -5.590
+#ZID= 31000, 4.410
 #EOH=
 0;-999999;-999999;-999999;-999999;0;-999999!
 0.02;2.708;0.03;0.6;0;0.02;11!
