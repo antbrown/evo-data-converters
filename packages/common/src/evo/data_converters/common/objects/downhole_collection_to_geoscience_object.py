@@ -95,6 +95,7 @@ class DownholeCollectionToGeoscienceObject:
             distance_unit=distance_unit,
             location=dhc_location,
             collections=dhc_collections,
+            extensions=self.dhc.extensions,
         )
 
         logger.debug(f"Created: {dhc_go}")

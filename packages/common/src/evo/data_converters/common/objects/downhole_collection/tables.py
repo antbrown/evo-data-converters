@@ -15,6 +15,7 @@ import typing
 from abc import ABC, abstractmethod
 
 from .column_mapping import ColumnMapping
+from ..attributes import HasAttributesMixin, AttributeNanValuesMappingType
 
 if sys.version_info >= (3, 12):
     from typing import override
@@ -22,7 +23,7 @@ else:
     from typing_extensions import override
 
 
-class MeasurementTableAdapter(ABC):
+class MeasurementTableAdapter(ABC, HasAttributesMixin):
     """
     Abstract base class for different measurement table types.
 
@@ -32,11 +33,14 @@ class MeasurementTableAdapter(ABC):
     NaN value tracking.
     """
 
+    df: pd.DataFrame
+    mapping: ColumnMapping
+
     def __init__(
         self,
         df: pd.DataFrame,
         column_mapping: ColumnMapping,
-        nan_values_by_column: dict[str, list[typing.Any]] | None = None,
+        nan_values_by_column: AttributeNanValuesMappingType | None = None,
     ) -> None:
         """
         Initialise the measurement table adapter.
@@ -47,7 +51,7 @@ class MeasurementTableAdapter(ABC):
         """
         self.df: pd.DataFrame = df
         self.mapping: ColumnMapping = column_mapping
-        self.nan_values_by_column: dict[str, list[typing.Any]] = nan_values_by_column or {}
+        self.nan_values_by_column = nan_values_by_column or {}
         self._validate()
         self._prepare_dataframe()
 
@@ -78,26 +82,6 @@ class MeasurementTableAdapter(ABC):
         if not col:
             raise ValueError("No hole index column found")
         return col
-
-    @typing.overload
-    def get_nan_values(self, column: None = None) -> dict[str, list[typing.Any]]: ...
-
-    @typing.overload
-    def get_nan_values(self, column: str) -> list[typing.Any]: ...
-
-    def get_nan_values(self, column: str | None = None) -> dict[str, list[typing.Any]] | list[typing.Any]:
-        """
-        Get NaN sentinel values for columns.
-
-        :param column: Specific column name, or None to get all columns
-
-        :return: If column is None, returns dict mapping column names to lists of sentinel values.
-                 If column is specified, returns list of sentinel values for that column (empty if none).
-        """
-        if column is None:
-            return self.nan_values_by_column
-
-        return self.nan_values_by_column.get(column, [])
 
     @abstractmethod
     def get_primary_column(self) -> str:

@@ -11,6 +11,8 @@
 
 import pandas as pd
 
+from ..attributes import HasAttributesMixin, AttributeNanValuesMappingType
+
 
 HOLE_COLLARS_SCHEMA: dict[str, str] = {
     # Unique identifier for each row, 1-based
@@ -28,7 +30,7 @@ HOLE_COLLARS_SCHEMA: dict[str, str] = {
 }
 
 
-class HoleCollars:
+class HoleCollars(HasAttributesMixin):
     """
     Container for hole collar information with one row per downhole.
 
@@ -56,15 +58,17 @@ class HoleCollars:
     In this example, SCPG_ENV and SCPG_RATE are treated as attribute columns.
     """
 
-    def __init__(self, df: pd.DataFrame) -> None:
+    def __init__(self, df: pd.DataFrame, nan_values_by_column: AttributeNanValuesMappingType | None = None) -> None:
         """
         Initialise hole collars from a DataFrame.
 
         :param df: DataFrame containing collar information with required schema columns
+        :param nan_values_by_column: Optional mapping of column names to lists of NaN sentinel values
 
         :raises ValueError: If required columns are missing or data types are incorrect
         """
         self.df: pd.DataFrame = df
+        self.nan_values_by_column = nan_values_by_column or {}
         self._validate()
 
     def _validate(self) -> None:
@@ -107,11 +111,3 @@ class HoleCollars:
         :return: List of attribute column names
         """
         return [col for col in self.df.columns if col not in HOLE_COLLARS_SCHEMA.keys()]
-
-    def get_attributes_df(self) -> pd.DataFrame:
-        """
-        Get a DataFrame containing only the attribute columns.
-
-        :return: DataFrame with only the non-schema (attribute) columns
-        """
-        return self.df[self.get_attribute_column_names()]

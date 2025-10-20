@@ -9,6 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from abc import abstractmethod
+from evo.objects import DownloadedObject
 from evo.objects.utils.data import ObjectDataClient
 from evo_schemas.components import (
     BoolAttribute_V1_1_0 as BoolAttribute,
@@ -32,6 +34,7 @@ from evo_schemas.elements import (
 
 import evo.logging
 import pandas as pd
+import numpy as np
 import pyarrow as pa
 import typing
 from enum import Enum
@@ -264,3 +267,115 @@ class AttributeFactory:
             values=integer_array_go,
             nan_description=NanCategorical(values=nan_codes),
         )
+
+    @staticmethod
+    async def create_from_evo(obj: DownloadedObject, attribute: OneOfAttribute_Item) -> pd.Series:
+        """
+        Downloads an attribute from Evo and converts it into a Pandas `Series` in the same
+        format that `create()` interprets.
+
+        :param obj: Downloaded Evo Downhole Collection Geoscience object
+        :param attribute: The attribute object to interpret
+        :return: A Pandas `Series` representing the attribute
+        """
+        attr_config = next(
+            (
+                c
+                for c in AttributeFactory.INFERRED_TYPE_MAP.values()
+                if c.attribute_class.attribute_type == attribute.attribute_type
+            ),
+            None,
+        )
+
+        if not attr_config:
+            if attribute.attribute_type == "category":
+                # Special case. These have two dataframes, one with int32 keys mapping to values, and a second
+                # with the values. Map them back to a Pandas categorical, the inverse of create_categorical_attribute above.
+                categories_df = await obj.download_dataframe(attribute.table.as_dict())
+                values_df = await obj.download_dataframe(attribute.values.as_dict())
+                mapping = categories_df.set_index("key")["value"]
+                attribute_df = pd.DataFrame({"data": values_df["data"].map(mapping).astype("category")})
+            else:
+                raise UnsupportedAttributeType(f"Unable to interpret '{attribute.attribute_type}' attributes")
+        else:
+            attribute_df = await obj.download_dataframe(attribute.values.as_dict())
+
+        nan_values: list[float | int] = []
+        if attribute.attribute_type == "category" or attr_config.nan_class in (NanCategorical, NanContinuous):
+            nan_values = attribute.nan_description.values
+
+        if attr_config == AttributeFactory.DATETIME_CONFIG:
+            attribute_df["data"] = pd.to_datetime(attribute_df["data"], utc=True, unit="us")
+
+        # Replace any nan placeholders in the downloaded data with NaN/NA but store them for reference
+        if attr_config is AttributeFactory.DATETIME_CONFIG:
+            # something like "-1" as a datetime placeholder will already have resolved to 1969 in the series,
+            # we need to map the placeholders into datetimes to match.
+            attribute_df["data"] = attribute_df["data"].replace(pd.to_datetime(nan_values, utc=True, unit="us"), pd.NA)
+        elif attr_config is AttributeFactory.CONTINUOUS_CONFIG:
+            attribute_df["data"] = attribute_df["data"].replace(nan_values, np.nan)
+        else:
+            attribute_df["data"] = attribute_df["data"].replace(nan_values, pd.NA)
+        attribute_df["data"].attrs["nan_values"] = nan_values
+
+        # Return just the data series
+        return attribute_df["data"].rename(attribute.name)
+
+
+AttributeNanValuesMappingType = dict[str, typing.Iterable[typing.Any]]
+
+
+class UnsupportedAttributeType(Exception):
+    """
+    An exception raised when an Evo attribute can't be properly interpreted.
+    """
+
+    pass
+
+
+class HasAttributesMixin:
+    """
+    Provides a generic way of wrapping objects that may have attributes attached to them.
+    Stores and provides access to NaN values.
+
+    Expects a self.df dataframe, of which some (but probably not all) series will be attributes.
+    """
+
+    nan_values_by_column: AttributeNanValuesMappingType
+    df: pd.DataFrame
+
+    @typing.overload
+    def get_nan_values(self, column: None = None) -> dict[str, typing.Iterable[typing.Any]]: ...
+
+    @typing.overload
+    def get_nan_values(self, column: str) -> typing.Iterable[typing.Any]: ...
+
+    def get_nan_values(self, column: str | None = None) -> AttributeNanValuesMappingType | typing.Iterable[typing.Any]:
+        """
+        Get NaN sentinel values for columns.
+
+        :param column: Specific column name, or None to get all columns
+
+        :return: If column is None, returns dict mapping column names to lists of sentinel values.
+                 If column is specified, returns list of sentinel values for that column (empty if none).
+        """
+        if column is None:
+            return self.nan_values_by_column
+
+        return self.nan_values_by_column.get(column, [])
+
+    @abstractmethod
+    def get_attribute_column_names(self) -> list[str]:
+        """
+        Classes using this mixin need to implement a way to discover which columns
+        in self.df are attributes.
+        """
+        raise NotImplementedError("Not implemented.")
+
+    def get_attributes_df(self) -> pd.DataFrame:
+        """
+        Get a DataFrame containing only the attribute columns.
+
+        :return: DataFrame with only the non-schema (attribute) columns
+        """
+        return self.df[self.get_attribute_column_names()]
