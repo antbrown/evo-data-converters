@@ -10,9 +10,14 @@
 #  limitations under the License.
 
 from .downhole_collection import DownholeCollection
-from .downhole_collection_to_geoscience_object import DownholeCollectionToGeoscienceObject
+from .hole_collars import HoleCollars
+from .tables import MeasurementTableFactory, IntervalTable, DistanceTable, MeasurementTableAdapter
 
 __all__ = [
     "DownholeCollection",
-    "DownholeCollectionToGeoscienceObject",
+    "HoleCollars",
+    "MeasurementTableAdapter",
+    "MeasurementTableFactory",
+    "DistanceTable",
+    "IntervalTable",
 ]

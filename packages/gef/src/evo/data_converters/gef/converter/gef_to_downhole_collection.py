@@ -9,7 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from evo.data_converters.common.objects.downhole_collection import DownholeCollection
+from turtle import distance
+from evo.data_converters.common.objects.downhole_collection import (
+    DownholeCollection,
+    HoleCollars,
+    MeasurementTableFactory,
+)
 from pygef.cpt import CPTData
 import pandas as pd
 import polars as pl
@@ -82,7 +87,7 @@ def create_from_parsed_gef_cpts(parsed_cpt_files: dict[str, CPTData]) -> Downhol
     if epsg_code is None:
         raise ValueError("Could not find valid epsg code in CPT files")
 
-    collars = pd.DataFrame(collar_rows).astype(
+    collars_df = pd.DataFrame(collar_rows).astype(
         {
             "hole_index": "int32",
             "hole_id": "string",
@@ -104,7 +109,15 @@ def create_from_parsed_gef_cpts(parsed_cpt_files: dict[str, CPTData]) -> Downhol
 
     collection_name = get_collection_name_from_collars(collar_rows)
 
-    return DownholeCollection(name=collection_name, collars=collars, measurements=measurements, epsg_code=epsg_code)
+    distance_measurements = MeasurementTableFactory.create(df=measurements)
+    collars = HoleCollars(df=collars_df)
+
+    return DownholeCollection(
+        name=collection_name,
+        collars=collars,
+        measurements=[distance_measurements],
+        coordinate_reference_system=epsg_code,
+    )
 
 
 def _extract_epsg_code(cpt_data: CPTData, hole_id: str) -> int:
