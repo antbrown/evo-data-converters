@@ -20,7 +20,7 @@ from pygef.cpt import CPTData
 logger = evo.logging.getLogger("data_converters")
 
 
-def parse_gef_file(filepath: str | Path) -> list[CPTData]:
+def parse_gef_file(filepath: str | Path, replace_column_voids=False) -> list[CPTData]:
     """
     Parse a single GEF-CPT or GEF-XML file.
     Args:
@@ -49,7 +49,7 @@ def parse_gef_file(filepath: str | Path) -> list[CPTData]:
             return multiple_cpt_data
 
         elif ext == ".gef":
-            cpt_data = read_cpt(filepath)
+            cpt_data = read_cpt(filepath, replace_column_voids=replace_column_voids)
             # GEF test ID is in alias.
             # https://github.com/cemsbv/pygef/blob/6002e174b154a6ef7726f7a3aa467d6ada22be92/src/pygef/shim.py#L106
             check_for_required_columns(cpt_data, filepath)
@@ -66,7 +66,7 @@ def parse_gef_file(filepath: str | Path) -> list[CPTData]:
         raise RuntimeError(f"Error processing file '{filepath}': {e}") from e
 
 
-def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
+def parse_gef_files(filepaths: list[str | Path], replace_column_voids=False) -> dict[str, CPTData]:
     """
     Parse a list of GEF-CPT & GEF-XML files and return a dictionary of CPTData objects keyed by filename.
 
@@ -83,7 +83,7 @@ def parse_gef_files(filepaths: list[str | Path]) -> dict[str, CPTData]:
     for filepath in filepaths:
         try:
             # Get list of CPT in the GEF file, copy to data dict.
-            file_result = parse_gef_file(filepath)
+            file_result = parse_gef_file(filepath, replace_column_voids=replace_column_voids)
             for cpt_data in file_result:
                 cpt_id = get_gef_cpt_id(cpt_data)
                 if cpt_id in data:

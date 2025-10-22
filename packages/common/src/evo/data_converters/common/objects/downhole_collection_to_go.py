@@ -180,10 +180,11 @@ class DownholeCollectionToGeoscienceObject:
         """Create a continuous attribute"""
         float_array_args = self.data_client.save_table(attribute_table)
         float_array_go = FloatArray1.from_dict(float_array_args)
+        nan_values = self.dhc.nan_values_by_attribute.get(name, [])
         return ContinuousAttribute(
             key=name,
             name=name,
-            nan_description=NanContinuous(values=[]),
+            nan_description=NanContinuous(values=nan_values),
             values=float_array_go,
         )
 

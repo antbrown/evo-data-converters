@@ -156,7 +156,15 @@ class TestCreateFromParsedGefCpts:
     @pytest.fixture
     def mock_cpt_data(self) -> Mock:
         """Create a mock CPTData object with required attributes."""
-        mock = Mock(spec=["delivered_location", "delivered_vertical_position_offset", "final_depth", "data"])
+        mock = Mock(
+            spec=[
+                "delivered_location",
+                "delivered_vertical_position_offset",
+                "final_depth",
+                "data",
+                "column_void_mapping",
+            ]
+        )
 
         # Mock location
         mock.delivered_location = Mock()
@@ -175,6 +183,12 @@ class TestCreateFromParsedGefCpts:
                 "friction": [0.01, 0.02, 0.03, 0.04],
             }
         )
+
+        mock.column_void_mapping = {
+            "penetrationLength": 9999.0,
+            "coneResistance": 9999.0,
+            "friction": 9999.0,
+        }
 
         return mock
 
@@ -198,7 +212,15 @@ class TestCreateFromParsedGefCpts:
         assert result.collars.iloc[0]["final_depth"] == 10.0
 
     def test_multiple_cpt_files_creates_combined_collection(self, mock_cpt_data) -> None:
-        mock_cpt_2 = Mock(spec=["delivered_location", "delivered_vertical_position_offset", "final_depth", "data"])
+        mock_cpt_2 = Mock(
+            spec=[
+                "delivered_location",
+                "delivered_vertical_position_offset",
+                "final_depth",
+                "data",
+                "column_void_mapping",
+            ]
+        )
         mock_cpt_2.delivered_location = Mock()
         mock_cpt_2.delivered_location.srs_name = "EPSG:28992"
         mock_cpt_2.delivered_location.x = 100100.0
@@ -208,6 +230,11 @@ class TestCreateFromParsedGefCpts:
         mock_cpt_2.data = pl.DataFrame(
             {"penetrationLength": [0.0, 1.5, 3.0], "coneResistance": [2.0, 3.0, 4.0], "friction": [0.02, 0.03, 0.04]}
         )
+        mock_cpt_2.column_void_mapping = {
+            "penetrationLength": 9999.0,
+            "coneResistance": 9999.0,
+            "friction": 9999.0,
+        }
 
         parsed_files = {"CPT-001": mock_cpt_data, "CPT-002": mock_cpt_2}
 
@@ -219,7 +246,15 @@ class TestCreateFromParsedGefCpts:
         assert result.measurements["hole_index"].nunique() == 2
 
     def test_inconsistent_epsg_codes_raises_error(self, mock_cpt_data) -> None:
-        mock_cpt_2 = Mock(spec=["delivered_location", "delivered_vertical_position_offset", "final_depth", "data"])
+        mock_cpt_2 = Mock(
+            spec=[
+                "delivered_location",
+                "delivered_vertical_position_offset",
+                "final_depth",
+                "data",
+                "column_void_mapping",
+            ]
+        )
         mock_cpt_2.delivered_location = Mock()
         mock_cpt_2.delivered_location.srs_name = "EPSG:4326"  # Different EPSG!
         mock_cpt_2.delivered_location.x = 5.0
@@ -227,6 +262,11 @@ class TestCreateFromParsedGefCpts:
         mock_cpt_2.delivered_vertical_position_offset = 0.0
         mock_cpt_2.final_depth = 8.0
         mock_cpt_2.data = pl.DataFrame({"penetrationLength": [0.0, 1.0], "coneResistance": [1.0, 2.0]})
+        mock_cpt_2.column_void_mapping = {
+            "penetrationLength": 9999.0,
+            "coneResistance": 9999.0,
+            "friction": 9999.0,
+        }
 
         parsed_files = {"CPT-001": mock_cpt_data, "CPT-002": mock_cpt_2}
 
@@ -260,7 +300,15 @@ class TestCreateFromParsedGefCpts:
         assert result.measurements.columns[0] == "hole_index"
 
     def test_hole_index_increments_correctly(self, mock_cpt_data) -> None:
-        mock_cpt_2 = Mock(spec=["delivered_location", "delivered_vertical_position_offset", "final_depth", "data"])
+        mock_cpt_2 = Mock(
+            spec=[
+                "delivered_location",
+                "delivered_vertical_position_offset",
+                "final_depth",
+                "data",
+                "column_void_mapping",
+            ]
+        )
         mock_cpt_2.delivered_location = Mock()
         mock_cpt_2.delivered_location.srs_name = "EPSG:28992"
         mock_cpt_2.delivered_location.x = 100100.0
@@ -270,6 +318,11 @@ class TestCreateFromParsedGefCpts:
         mock_cpt_2.data = pl.DataFrame(
             {"penetrationLength": [0.0, 2.0], "coneResistance": [1.0, 2.0], "friction": [0.01, 0.02]}
         )
+        mock_cpt_2.column_void_mapping = {
+            "penetrationLength": 9999.0,
+            "coneResistance": 9999.0,
+            "friction": 9999.0,
+        }
 
         parsed_files = {"CPT-001": mock_cpt_data, "CPT-002": mock_cpt_2}
 
@@ -326,7 +379,15 @@ class TestCreateFromParsedGefCpts:
         assert mock_logger.debug.called
 
     def test_three_cpt_files_collection_name(self, mock_cpt_data) -> None:
-        mock_cpt_2 = Mock(spec=["delivered_location", "delivered_vertical_position_offset", "final_depth", "data"])
+        mock_cpt_2 = Mock(
+            spec=[
+                "delivered_location",
+                "delivered_vertical_position_offset",
+                "final_depth",
+                "data",
+                "column_void_mapping",
+            ]
+        )
         mock_cpt_2.delivered_location = Mock()
         mock_cpt_2.delivered_location.srs_name = "EPSG:28992"
         mock_cpt_2.delivered_location.x = 100100.0
@@ -334,8 +395,21 @@ class TestCreateFromParsedGefCpts:
         mock_cpt_2.delivered_vertical_position_offset = 0.0
         mock_cpt_2.final_depth = 8.0
         mock_cpt_2.data = pl.DataFrame({"penetrationLength": [0.0], "coneResistance": [0.0], "friction": [0.0]})
+        mock_cpt_2.column_void_mapping = {
+            "penetrationLength": 9999.0,
+            "coneResistance": 9999.0,
+            "friction": 9999.0,
+        }
 
-        mock_cpt_3 = Mock(spec=["delivered_location", "delivered_vertical_position_offset", "final_depth", "data"])
+        mock_cpt_3 = Mock(
+            spec=[
+                "delivered_location",
+                "delivered_vertical_position_offset",
+                "final_depth",
+                "data",
+                "column_void_mapping",
+            ]
+        )
         mock_cpt_3.delivered_location = Mock()
         mock_cpt_3.delivered_location.srs_name = "EPSG:28992"
         mock_cpt_3.delivered_location.x = 100200.0
@@ -343,6 +417,11 @@ class TestCreateFromParsedGefCpts:
         mock_cpt_3.delivered_vertical_position_offset = 0.0
         mock_cpt_3.final_depth = 9.0
         mock_cpt_3.data = pl.DataFrame({"penetrationLength": [0.0], "coneResistance": [0.0], "friction": [0.0]})
+        mock_cpt_3.column_void_mapping = {
+            "penetrationLength": 9999.0,
+            "coneResistance": 9999.0,
+            "friction": 9999.0,
+        }
 
         parsed_files = {"CPT-001": mock_cpt_data, "CPT-002": mock_cpt_2, "CPT-003": mock_cpt_3}
 
@@ -375,7 +454,15 @@ class TestIntegration:
         cpts = {}
 
         for i in range(1, 6):
-            mock = Mock(spec=["delivered_location", "delivered_vertical_position_offset", "final_depth", "data"])
+            mock = Mock(
+                spec=[
+                    "delivered_location",
+                    "delivered_vertical_position_offset",
+                    "final_depth",
+                    "data",
+                    "column_void_mapping",
+                ]
+            )
             mock.delivered_location = Mock()
             mock.delivered_location.srs_name = "EPSG:28992"
             mock.delivered_location.x = 100000.0 + (i * 50)
@@ -389,6 +476,12 @@ class TestIntegration:
                     "friction": [j * 0.01 for j in range(20)],
                 }
             )
+            mock.column_void_mapping = {
+                "penetrationLength": 9999.0,
+                "coneResistance": 9999.0,
+                "friction": 9999.0,
+            }
+
             cpts[f"CPT-{i:03d}"] = mock
 
         result = create_from_parsed_gef_cpts(cpts)
