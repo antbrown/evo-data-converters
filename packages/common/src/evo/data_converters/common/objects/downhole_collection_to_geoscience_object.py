@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from evo.data_converters.common.objects.attributes import AttributeFactory
 from evo.data_converters.common.objects.downhole_collection.tables import MeasurementTableAdapter
 import evo.logging
 from evo.objects.utils.data import ObjectDataClient
@@ -26,8 +27,7 @@ from evo_schemas.components import (
     Intervals_V1_0_1 as Intervals,
     IntervalTable_V1_2_0_FromTo as IntervalTable_FromTo,
     DistanceTable_V1_2_0_Distance as DistanceTable_Distance,
-    ContinuousAttribute_V1_1_0 as ContinuousAttribute,
-    NanContinuous_V1_0_1 as NanContinuous,
+    OneOfAttribute_V1_2_0 as OneOfAttribute,
 )
 from evo_schemas.elements import (
     FloatArray1_V1_0_1 as FloatArray1,
@@ -114,6 +114,8 @@ class DownholeCollectionToGeoscienceObject:
         measurement_table = self.get_first_distance_measurement_table()
 
         return DownholeCollection_Location(
+            # Attributes
+            attributes=self.create_dhc_location_attributes(),
             # Locations
             coordinates=self.create_dhc_location_coordinates(),
             # Hole Collars
@@ -123,6 +125,18 @@ class DownholeCollectionToGeoscienceObject:
             hole_id=self.create_dhc_location_hole_id(),
             path=self.create_dhc_location_path(),
         )
+
+    def create_dhc_location_attributes(self) -> OneOfAttribute | None:
+        attributes: OneOfAttribute = []
+        for attribute_name in self.dhc.collars.get_attribute_column_names():
+            attribute = AttributeFactory.create(
+                name=attribute_name,
+                series=self.dhc.collars.df[attribute_name],
+                client=self.data_client,
+            )
+            if attribute:
+                attributes.append(attribute)
+        return attributes or None
 
     def create_dhc_location_coordinates(self) -> FloatArray3:
         """Create a 3D coordinate array from downhole locations"""
@@ -178,20 +192,10 @@ class DownholeCollectionToGeoscienceObject:
         distances_args = self.data_client.save_table(distances_table)
         distances_go = FloatArray1.from_dict(distances_args)
 
-        attributes = []
-
-        attribute_tables = self.collection_attribute_tables(mt)
-        for attribute_name, attribute_table in attribute_tables.items():
-            attribute_go = self.create_continuous_attribute_component(
-                attribute_name,
-                attribute_table,
-            )
-            attributes.append(attribute_go)
-
         distances_unit = UnitLength_UnitCategories("m")
 
         distance_go = DistanceTable_Distance(
-            attributes=attributes,
+            attributes=self.create_collection_attributes(mt),
             unit=distances_unit,
             values=distances_go,
         )
@@ -209,17 +213,9 @@ class DownholeCollectionToGeoscienceObject:
 
         intervals_go = Intervals(start_and_end=start_end_go)
 
-        attributes = []
-
-        attribute_tables = self.collection_attribute_tables(mt)
-        for attribute_name, attribute_table in attribute_tables.items():
-            attribute_go = self.create_continuous_attribute_component(
-                attribute_name,
-                attribute_table,
-            )
-            attributes.append(attribute_go)
-
-        interval_table_from_to = IntervalTable_FromTo(intervals=intervals_go, attributes=attributes)
+        interval_table_from_to = IntervalTable_FromTo(
+            intervals=intervals_go, attributes=self.create_collection_attributes(mt)
+        )
 
         interval_table_go = DownholeAttributes_Item_IntervalTable(
             name="intervals",
@@ -229,17 +225,17 @@ class DownholeCollectionToGeoscienceObject:
 
         return interval_table_go
 
-    def create_continuous_attribute_component(self, name: str, attribute_table: pa.Table) -> ContinuousAttribute:
-        """Create a continuous attribute"""
-        float_array_args = self.data_client.save_table(attribute_table)
-        float_array_go = FloatArray1.from_dict(float_array_args)
-        nan_values = self.dhc.nan_values_by_attribute.get(name, [])
-        return ContinuousAttribute(
-            key=name,
-            name=name,
-            nan_description=NanContinuous(values=nan_values),
-            values=float_array_go,
-        )
+    def create_collection_attributes(self, mt: MeasurementTableAdapter) -> OneOfAttribute | None:
+        attributes: OneOfAttribute = []
+        for attribute_name in mt.get_attribute_columns():
+            attribute = AttributeFactory.create(
+                name=attribute_name,
+                series=mt.df[attribute_name],
+                client=self.data_client,
+            )
+            if attribute:
+                attributes.append(attribute)
+        return attributes or None
 
     def coordinates_table(self) -> pa.Table:
         """Create a table of 3D coordinates from collar information"""
@@ -351,15 +347,6 @@ class DownholeCollectionToGeoscienceObject:
         )
         intervals_schema = pa.schema([pa.field("from", pa.float64()), pa.field("to", pa.float64())])
         return pa.Table.from_pandas(intervals_df, intervals_schema)
-
-    def collection_attribute_tables(self, mt: MeasurementTableAdapter) -> dict[str, pa.Table]:
-        """Create a table for each attribute and their measurements"""
-        attribute_tables = {}
-        attribute_schema = pa.schema([("data", pa.float64())])
-        for attribute_name in mt.get_attribute_columns():
-            attribute_df = mt.df[[attribute_name]].rename(columns={attribute_name: "data"})
-            attribute_tables[attribute_name] = pa.Table.from_pandas(attribute_df, schema=attribute_schema)
-        return attribute_tables
 
     def get_first_distance_measurement_table(self) -> DistanceMeasurementTable:
         """Move this to intermediary object?"""
