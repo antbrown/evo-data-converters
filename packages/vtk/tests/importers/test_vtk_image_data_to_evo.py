@@ -21,9 +21,9 @@ from evo_schemas.objects import Regular3DGrid_V1_2_0, RegularMasked3DGrid_V1_2_0
 from vtk.util.numpy_support import numpy_to_vtk
 from vtk_test_helpers import MockDataClient, add_ghost_value
 
+from evo.data_converters.common import crs_from_epsg_code
 from evo.data_converters.vtk.importer.exceptions import GhostValueError
 from evo.data_converters.vtk.importer.vtk_image_data_to_evo import convert_vtk_image_data
-from evo.data_converters.common import crs_from_epsg_code
 
 
 @pytest.mark.parametrize(

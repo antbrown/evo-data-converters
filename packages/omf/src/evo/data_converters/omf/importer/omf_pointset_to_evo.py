@@ -17,8 +17,8 @@ from evo_schemas.objects import Pointset_V1_2_0, Pointset_V1_2_0_Locations
 import evo.logging
 from evo.objects.utils.data import ObjectDataClient
 
-from evo.data_converters.common.utils import vertices_bounding_box
 from evo.data_converters.common import crs_from_epsg_code
+from evo.data_converters.common.utils import vertices_bounding_box
 from .omf_attributes_to_evo import convert_omf_attributes
 
 logger = evo.logging.getLogger("data_converters")

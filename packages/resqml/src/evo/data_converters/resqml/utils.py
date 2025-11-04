@@ -16,13 +16,12 @@ from zipfile import BadZipFile
 import numpy as np
 import resqpy.crs as rqc
 import resqpy.olio.xml_et as rqet
+from evo.data_converters.common import crs_from_epsg_code
 from evo_schemas.components import Crs_V1_0_1_EpsgCode as Crs_EpsgCode
 from resqpy.grid import Grid
 from resqpy.model import Model, ModelContext
 from resqpy.property import Property
 from resqpy.well import Trajectory
-
-from evo.data_converters.common import crs_from_epsg_code
 
 
 def is_resqml(filepath: str) -> bool:

@@ -23,8 +23,8 @@ from evo_schemas.elements import FloatArray1_V1_0_1
 from evo_schemas.objects import Tensor3DGrid_V1_2_0, Tensor3DGrid_V1_2_0_GridCells3D
 
 import evo.logging
-from evo.data_converters.common.utils import get_object_tags, grid_bounding_box
 from evo.data_converters.common import crs_from_epsg_code
+from evo.data_converters.common.utils import get_object_tags, grid_bounding_box
 
 from evo.data_converters.ubc.importer.ubc_reader import UBCMeshFileImporter, UBCPropertyFileImporter
 from evo.objects.utils.data import ObjectDataClient

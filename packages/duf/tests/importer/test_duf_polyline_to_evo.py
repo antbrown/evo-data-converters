@@ -18,11 +18,11 @@ import pytest
 from evo_schemas.components import BoundingBox_V1_0_1
 from evo_schemas.objects import LineSegments_V2_1_0
 
+from evo.data_converters.common import crs_from_epsg_code
 import evo.data_converters.duf.common.deswik_types as dw
 from evo.data_converters.duf.importer import convert_duf_polyline
 from evo.data_converters.duf.importer.duf_polyline_to_evo import combine_duf_polylines
 from utils import extract_single_attr_value, extract_attr_values
-from evo.data_converters.common import crs_from_epsg_code
 
 
 @pytest.fixture(scope="module")

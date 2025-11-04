@@ -29,8 +29,8 @@ from resqpy.property import Property
 
 import evo.logging
 from evo.data_converters.common.hexahedrons import build_indices, build_vertices
-from evo.data_converters.common.utils import get_object_tags, vertices_bounding_box
 from evo.data_converters.common import crs_from_epsg_code
+from evo.data_converters.common.utils import get_object_tags, vertices_bounding_box
 
 from evo.data_converters.resqml.importer._attribute_converters import (
     convert_categorical_property,

@@ -19,8 +19,8 @@ from evo_schemas.objects import LineSegments_V2_1_0, LineSegments_V2_1_0_Parts
 
 import evo.logging
 from evo.objects.utils.data import ObjectDataClient
-from evo.data_converters.common import crs_from_epsg_code
 
+from evo.data_converters.common import crs_from_epsg_code
 import evo.data_converters.duf.common.deswik_types as dw
 from .utils import (
     get_name,

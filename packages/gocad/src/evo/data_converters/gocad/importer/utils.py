@@ -22,10 +22,10 @@ from evo_schemas.elements import FloatArray1_V1_0_1
 from evo_schemas.objects import Regular3DGrid_V1_2_0
 from scipy.spatial.transform import Rotation
 
+from evo.data_converters.common import crs_from_epsg_code
 from evo.data_converters.common.utils import check_rotation_matrix, convert_rotation, grid_bounding_box
 from evo.data_converters.gocad.importer.gocad_reader import import_gocad_voxel
 from evo.objects.utils.data import ObjectDataClient
-from evo.data_converters.common import crs_from_epsg_code
 
 
 def _create_continuous_attributes(

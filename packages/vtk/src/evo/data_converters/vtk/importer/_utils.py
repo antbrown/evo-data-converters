@@ -19,8 +19,8 @@ from evo_schemas.components import BoundingBox_V1_0_1, Rotation_V1_1_0
 from scipy.spatial.transform import Rotation
 from vtk.util.numpy_support import vtk_to_numpy
 
-from evo.data_converters.common.utils import convert_rotation
 from evo.data_converters.common import crs_from_epsg_code
+from evo.data_converters.common.utils import convert_rotation
 
 
 from .exceptions import GhostValueError

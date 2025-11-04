@@ -20,9 +20,9 @@ from evo_schemas.objects import TriangleMesh_V2_1_0
 
 import evo.logging
 from evo.objects.utils.data import ObjectDataClient
-from evo.data_converters.common import crs_from_epsg_code
 from numpy._typing import NDArray
 
+from evo.data_converters.common import crs_from_epsg_code
 import evo.data_converters.duf.common.deswik_types as dw
 from .utils import (
     get_name,
