@@ -16,11 +16,12 @@ dependencies = [
     "evo-schemas>=2025.9.12",
     "nest_asyncio",
     "numpy==1.26.3",
+    "pandas>=2.3.1",
     "pyarrow",
     "requests",
     "scipy",
     "pyproj>=3.7.1",
-    "pandas>=2.3.1",
+    "typing_extensions; python_version < '3.12'",
 ]
 
 [project.urls]

@@ -9,10 +9,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .downhole_collection import DownholeCollection
-from .downhole_collection_to_geoscience_object import DownholeCollectionToGeoscienceObject
+from dataclasses import dataclass, field
 
-__all__ = [
-    "DownholeCollection",
-    "DownholeCollectionToGeoscienceObject",
-]
+
+@dataclass
+class ColumnMapping:
+    """
+    Provide a way to map dataframe configurations to a set of collection types
+    """
+
+    # The hole index should relate to the index of the hole_id in the collars table (1-based)
+    HOLE_INDEX_COLUMNS: list[str] = field(default_factory=lambda: ["hole_index"])
+
+    DEPTH_COLUMNS: list[str] = field(default_factory=list)
+
+    FROM_COLUMNS: list[str] = field(default_factory=list)
+    TO_COLUMNS: list[str] = field(default_factory=list)

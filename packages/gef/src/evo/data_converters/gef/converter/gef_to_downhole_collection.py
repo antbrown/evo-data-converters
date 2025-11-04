@@ -9,7 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from evo.data_converters.common.objects.downhole_collection import DownholeCollection
+from evo.data_converters.common.objects.downhole_collection import (
+    ColumnMapping,
+    DownholeCollection,
+    HoleCollars,
+    MeasurementTableFactory,
+)
 from pygef.cpt import CPTData
 import pandas as pd
 import polars as pl
@@ -38,7 +43,7 @@ def create_from_parsed_gef_cpts(parsed_cpt_files: dict[str, CPTData]) -> Downhol
     if not parsed_cpt_files:
         raise ValueError("No CPT files provided - parsed_cpt_files dictionary is empty")
 
-    epsg_code: int | None = None
+    epsg_code: int | str | None = None
     collar_rows: list[dict[str, typing.Any]] = []
     measurement_dfs: list[pl.DataFrame] = []
     nan_values_by_attribute: dict[str, list] = defaultdict(list)
@@ -89,7 +94,7 @@ def create_from_parsed_gef_cpts(parsed_cpt_files: dict[str, CPTData]) -> Downhol
     if epsg_code is None:
         raise ValueError("Could not find valid epsg code in CPT files")
 
-    collars = pd.DataFrame(collar_rows).astype(
+    collars_df = pd.DataFrame(collar_rows).astype(
         {
             "hole_index": "int32",
             "hole_id": "string",
@@ -111,16 +116,20 @@ def create_from_parsed_gef_cpts(parsed_cpt_files: dict[str, CPTData]) -> Downhol
 
     collection_name = get_collection_name_from_collars(collar_rows)
 
+    column_mapping = ColumnMapping(DEPTH_COLUMNS=["penetrationLength"])
+    distance_measurements = MeasurementTableFactory.create(df=measurements, column_mapping=column_mapping)
+    collars = HoleCollars(df=collars_df)
+
     return DownholeCollection(
         name=collection_name,
         collars=collars,
-        measurements=measurements,
+        measurements=[distance_measurements],
+        coordinate_reference_system=epsg_code,
         nan_values_by_attribute=nan_values_by_attribute,
-        epsg_code=epsg_code,
     )
 
 
-def _extract_epsg_code(cpt_data: CPTData, hole_id: str) -> int:
+def _extract_epsg_code(cpt_data: CPTData, hole_id: str) -> int | str:
     """Extract EPSG code from CPTData object"""
 
     try:
@@ -135,6 +144,9 @@ def _extract_epsg_code(cpt_data: CPTData, hole_id: str) -> int:
         epsg_code = int(srs_name.split(":")[-1])
     except (ValueError, IndexError) as e:
         raise ValueError(f"CPT file '{hole_id}' has invalid EPSG code in SRS name: '{srs_name}'. Error: {e}")
+
+    if epsg_code == 404000:
+        epsg_code = "unspecified"
 
     return epsg_code
 

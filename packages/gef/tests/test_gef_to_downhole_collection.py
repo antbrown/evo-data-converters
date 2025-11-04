@@ -1,7 +1,19 @@
+#  Copyright © 2025 Bentley Systems, Incorporated
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#      http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 import pytest
 import polars as pl
 from unittest.mock import Mock, patch
-from evo.data_converters.common.objects.downhole_collection import DownholeCollection
+from evo.data_converters.common.objects import DownholeCollection
+from evo.data_converters.common.objects.downhole_collection import HoleCollars
 from evo.data_converters.gef.converter.gef_to_downhole_collection import (
     _calculate_final_depth,
     _extract_epsg_code,
@@ -37,7 +49,7 @@ class TestGetCollectionNameFromCollars:
 class TestExtractEpsgCode:
     """Tests for _extract_epsg_code helper function."""
 
-    def test_valid_epsg_code_extraction(self) -> None:
+    def test_valid_epsg_code_extraction_short_format(self) -> None:
         mock_cpt = Mock()
         mock_cpt.delivered_location.srs_name = "EPSG:28992"
 
@@ -45,13 +57,22 @@ class TestExtractEpsgCode:
 
         assert result == 28992
 
-    def test_different_epsg_format(self) -> None:
+    def test_valid_epsg_code_extraction_urn_format(self) -> None:
         mock_cpt = Mock()
         mock_cpt.delivered_location.srs_name = "urn:ogc:def:crs:EPSG::4326"
 
         result = _extract_epsg_code(mock_cpt, "TEST-001")
 
         assert result == 4326
+
+    def test_epsg_extraction_epsg_404000_is_unspecified(self) -> None:
+        """Pygef returns EPSG 404000 if supplied an invalid/unrecognised XYID."""
+        mock_cpt = Mock()
+        mock_cpt.delivered_location.srs_name = "urn:ogc:def:crs:EPSG::404000"
+
+        result = _extract_epsg_code(mock_cpt, "TEST-001")
+
+        assert result == "unspecified"
 
     def test_missing_srs_name_attribute_raises_error(self) -> None:
         mock_cpt = Mock()
@@ -203,13 +224,13 @@ class TestCreateFromParsedGefCpts:
 
         assert isinstance(result, DownholeCollection)
         assert result.name == "CPT-001"
-        assert result.epsg_code == 28992
-        assert len(result.collars) == 1
-        assert result.collars.iloc[0]["hole_id"] == "CPT-001"
-        assert result.collars.iloc[0]["x"] == 100000.0
-        assert result.collars.iloc[0]["y"] == 500000.0
-        assert result.collars.iloc[0]["z"] == 1.5
-        assert result.collars.iloc[0]["final_depth"] == 10.0
+        assert result.coordinate_reference_system == 28992
+        assert isinstance(result.collars, HoleCollars)
+        assert result.collars.df.iloc[0]["hole_id"] == "CPT-001"
+        assert result.collars.df.iloc[0]["x"] == 100000.0
+        assert result.collars.df.iloc[0]["y"] == 500000.0
+        assert result.collars.df.iloc[0]["z"] == 1.5
+        assert result.collars.df.iloc[0]["final_depth"] == 10.0
 
     def test_multiple_cpt_files_creates_combined_collection(self, mock_cpt_data) -> None:
         mock_cpt_2 = Mock(
@@ -241,9 +262,9 @@ class TestCreateFromParsedGefCpts:
         result = create_from_parsed_gef_cpts(parsed_files)
 
         assert result.name == "CPT-001...CPT-002"
-        assert len(result.collars) == 2
-        assert len(result.measurements) == 7  # 4 + 3 measurements
-        assert result.measurements["hole_index"].nunique() == 2
+        assert len(result.collars.df) == 2
+        assert len(result.measurements[0].df) == 7  # 4 + 3 measurements
+        assert result.measurements[0].df["hole_index"].nunique() == 2
 
     def test_inconsistent_epsg_codes_raises_error(self, mock_cpt_data) -> None:
         mock_cpt_2 = Mock(
@@ -279,7 +300,7 @@ class TestCreateFromParsedGefCpts:
 
         result = create_from_parsed_gef_cpts(parsed_files)
 
-        assert result.collars.iloc[0]["z"] == 0.0
+        assert result.collars.df.iloc[0]["z"] == 0.0
 
     def test_missing_final_depth_uses_max_penetration(self, mock_cpt_data) -> None:
         mock_cpt_data.final_depth = 0.0
@@ -287,17 +308,17 @@ class TestCreateFromParsedGefCpts:
 
         result = create_from_parsed_gef_cpts(parsed_files)
 
-        assert result.collars.iloc[0]["final_depth"] == 3.0  # max of [0,1,2,3]
+        assert result.collars.df.iloc[0]["final_depth"] == 3.0  # max of [0,1,2,3]
 
     def test_measurements_have_hole_index_column(self, mock_cpt_data) -> None:
         parsed_files = {"CPT-001": mock_cpt_data}
 
         result = create_from_parsed_gef_cpts(parsed_files)
 
-        assert "hole_index" in result.measurements.columns
-        assert all(result.measurements["hole_index"] == 1)
+        assert "hole_index" in result.measurements[0].df.columns
+        assert all(result.measurements[0].df["hole_index"] == 1)
         # Verify hole_index is the first column
-        assert result.measurements.columns[0] == "hole_index"
+        assert result.measurements[0].df.columns[0] == "hole_index"
 
     def test_hole_index_increments_correctly(self, mock_cpt_data) -> None:
         mock_cpt_2 = Mock(
@@ -328,8 +349,8 @@ class TestCreateFromParsedGefCpts:
 
         result = create_from_parsed_gef_cpts(parsed_files)
 
-        hole_1_measurements = result.measurements[result.measurements["hole_index"] == 1]
-        hole_2_measurements = result.measurements[result.measurements["hole_index"] == 2]
+        hole_1_measurements = result.measurements[0].df[result.measurements[0].df["hole_index"] == 1]
+        hole_2_measurements = result.measurements[0].df[result.measurements[0].df["hole_index"] == 2]
 
         assert len(hole_1_measurements) == 4
         assert len(hole_2_measurements) == 2
@@ -339,12 +360,12 @@ class TestCreateFromParsedGefCpts:
 
         result = create_from_parsed_gef_cpts(parsed_files)
 
-        assert result.collars["hole_index"].dtype == "int32"
-        assert result.collars["hole_id"].dtype == "string"
-        assert result.collars["x"].dtype == "float64"
-        assert result.collars["y"].dtype == "float64"
-        assert result.collars["z"].dtype == "float64"
-        assert result.collars["final_depth"].dtype == "float64"
+        assert result.collars.df["hole_index"].dtype == "int32"
+        assert result.collars.df["hole_id"].dtype == "string"
+        assert result.collars.df["x"].dtype == "float64"
+        assert result.collars.df["y"].dtype == "float64"
+        assert result.collars.df["z"].dtype == "float64"
+        assert result.collars.df["final_depth"].dtype == "float64"
 
     def test_preserves_original_column_order(self, mock_cpt_data) -> None:
         parsed_files = {"CPT-001": mock_cpt_data}
@@ -353,7 +374,7 @@ class TestCreateFromParsedGefCpts:
 
         # hole_index should be first, then original columns in order
         expected_columns = ["hole_index", "penetrationLength", "coneResistance", "friction"]
-        assert list(result.measurements.columns) == expected_columns
+        assert list(result.measurements[0].df.columns) == expected_columns
 
     def test_no_column_duplication_if_hole_index_exists(self, mock_cpt_data) -> None:
         # Add hole_index to the original data
@@ -363,10 +384,10 @@ class TestCreateFromParsedGefCpts:
         result = create_from_parsed_gef_cpts(parsed_files)
 
         # Should only have one hole_index column
-        hole_index_count = sum(1 for col in result.measurements.columns if col == "hole_index")
+        hole_index_count = sum(1 for col in result.measurements[0].df.columns if col == "hole_index")
         assert hole_index_count == 1
         # And it should be the correct value (1, not 99)
-        assert all(result.measurements["hole_index"] == 1)
+        assert all(result.measurements[0].df["hole_index"] == 1)
 
     @patch("evo.data_converters.gef.converter.gef_to_downhole_collection.logger")
     def test_logging_for_successful_processing(self, mock_logger, mock_cpt_data) -> None:
@@ -435,7 +456,7 @@ class TestCreateFromParsedGefCpts:
 
         result = create_from_parsed_gef_cpts(parsed_files)
 
-        assert result.collars.iloc[0]["z"] == 0.0
+        assert result.collars.df.iloc[0]["z"] == 0.0
 
     def test_handles_negative_vertical_offset(self, mock_cpt_data) -> None:
         mock_cpt_data.delivered_vertical_position_offset = -2.5
@@ -443,7 +464,7 @@ class TestCreateFromParsedGefCpts:
 
         result = create_from_parsed_gef_cpts(parsed_files)
 
-        assert result.collars.iloc[0]["z"] == -2.5
+        assert result.collars.df.iloc[0]["z"] == -2.5
 
 
 class TestIntegration:
@@ -487,7 +508,7 @@ class TestIntegration:
         result = create_from_parsed_gef_cpts(cpts)
 
         assert result.name == "CPT-001...CPT-005"
-        assert len(result.collars) == 5
-        assert len(result.measurements) == 100  # 5 CPTs * 20 measurements
-        assert result.epsg_code == 28992
-        assert set(result.measurements["hole_index"].unique()) == {1, 2, 3, 4, 5}
+        assert len(result.collars.df) == 5
+        assert len(result.measurements[0].df) == 100  # 5 CPTs * 20 measurements
+        assert result.coordinate_reference_system == 28992
+        assert set(result.measurements[0].df["hole_index"].unique()) == {1, 2, 3, 4, 5}

@@ -9,22 +9,29 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from evo.data_converters.common.objects.downhole_collection.tables import MeasurementTableAdapter
 import evo.logging
 from evo.objects.utils.data import ObjectDataClient
 from evo_schemas.components import (
     BoundingBox_V1_0_1 as BoundingBox,
     CategoryData_V1_0_1 as CategoryData,
+    Crs_V1_0_1 as Crs,
     Crs_V1_0_1_EpsgCode as Crs_EpsgCode,
-    DownholeAttributes_V1_0_0_Item as DownholeAttributes,
+    Crs_V1_0_1_OgcWkt as Crs_OgcWkt,
+    DownholeAttributes_V1_0_0 as DownholeAttributes,
     DownholeAttributes_V1_0_0_Item_DistanceTable as DownholeAttributes_Item_DistanceTable,
+    DownholeAttributes_V1_0_0_Item_IntervalTable as DownholeAttributes_Item_IntervalTable,
     DownholeDirectionVector_V1_0_0 as DownholeDirectionVector,
     HoleChunks_V1_0_0 as HoleChunks,
-    DistanceTable_V1_2_0_Distance as Distance,
+    Intervals_V1_0_1 as Intervals,
+    IntervalTable_V1_2_0_FromTo as IntervalTable_FromTo,
+    DistanceTable_V1_2_0_Distance as DistanceTable_Distance,
     ContinuousAttribute_V1_1_0 as ContinuousAttribute,
     NanContinuous_V1_0_1 as NanContinuous,
 )
 from evo_schemas.elements import (
     FloatArray1_V1_0_1 as FloatArray1,
+    FloatArray2_V1_0_1 as FloatArray2,
     FloatArray3_V1_0_1 as FloatArray3,
     IntegerArray1_V1_0_1 as IntegerArray1,
     LookupTable_V1_0_1 as LookupTable,
@@ -36,7 +43,11 @@ from evo_schemas.objects import (
 )
 import pyarrow as pa
 
-from .downhole_collection import DownholeCollection
+from .downhole_collection import (
+    DownholeCollection,
+    IntervalTable as IntervalMeasurementTable,
+    DistanceTable as DistanceMeasurementTable,
+)
 
 AZIMUTH: float = 0.0  # Assume vertical
 DIP: float = 90.0  # Positive dip = down
@@ -45,18 +56,15 @@ logger = evo.logging.getLogger("data_converters")
 
 
 class DownholeCollectionToGeoscienceObject:
-    dhc: DownholeCollection
-    data_client: ObjectDataClient
-
     def __init__(self, dhc: DownholeCollection, data_client: ObjectDataClient) -> None:
-        self.dhc = dhc
-        self.data_client = data_client
+        self.dhc: DownholeCollection = dhc
+        self.data_client: ObjectDataClient = data_client
 
     def convert(self) -> DownholeCollectionGeoscienceObject:
         """Converts the downhole collection into a geoscience object"""
         logger.debug("Converting to Geoscience Object.")
 
-        coordinate_reference_system = Crs_EpsgCode(epsg_code=self.dhc.epsg_code)
+        coordinate_reference_system = self.create_coordinate_reference_system()
         bounding_box = self.create_bounding_box()
 
         distance_unit = UnitLength_UnitCategories("m")
@@ -81,27 +89,36 @@ class DownholeCollectionToGeoscienceObject:
 
         return dhc_go
 
+    def create_coordinate_reference_system(self) -> Crs:
+        if isinstance(self.dhc.coordinate_reference_system, str):
+            return Crs_OgcWkt(ogc_wkt=self.dhc.coordinate_reference_system)
+        if isinstance(self.dhc.coordinate_reference_system, int):
+            return Crs_EpsgCode(epsg_code=self.dhc.coordinate_reference_system)
+        return "unspecified"
+
     def create_bounding_box(self) -> BoundingBox:
         """Create a Bounding Box object"""
-        bounding_box: dict[str, float] = self.dhc.bounding_box()
+        bounding_box: list[float] = self.dhc.get_bounding_box()
 
         return BoundingBox(
-            min_x=bounding_box["min_x"],
-            max_x=bounding_box["max_x"],
-            min_y=bounding_box["min_y"],
-            max_y=bounding_box["max_y"],
-            min_z=bounding_box["min_z"],
-            max_z=bounding_box["max_z"],
+            min_x=bounding_box[0],
+            max_x=bounding_box[1],
+            min_y=bounding_box[2],
+            max_y=bounding_box[3],
+            min_z=bounding_box[4],
+            max_z=bounding_box[5],
         )
 
     def create_dhc_location(self) -> DownholeCollection_Location:
         """Create a downhole collection location object"""
+        measurement_table = self.get_first_distance_measurement_table()
+
         return DownholeCollection_Location(
             # Locations
             coordinates=self.create_dhc_location_coordinates(),
             # Hole Collars
             distances=self.create_dhc_location_distances(),
-            holes=self.create_dhc_hole_chunks(),
+            holes=self.create_dhc_hole_chunks(measurement_table),
             # DC Location
             hole_id=self.create_dhc_location_hole_id(),
             path=self.create_dhc_location_path(),
@@ -119,9 +136,9 @@ class DownholeCollectionToGeoscienceObject:
         distances_args = self.data_client.save_table(distances_table)
         return FloatArray3.from_dict(distances_args)
 
-    def create_dhc_hole_chunks(self) -> HoleChunks:
+    def create_dhc_hole_chunks(self, measurement_table: MeasurementTableAdapter) -> HoleChunks:
         """Create a hole chunks object"""
-        holes_table = self.holes_table()
+        holes_table = self.holes_table(measurement_table)
         holes_args = self.data_client.save_table(holes_table)
         return HoleChunks.from_dict(holes_args)
 
@@ -143,24 +160,27 @@ class DownholeCollectionToGeoscienceObject:
         path_args = self.data_client.save_table(path_table)
         return DownholeDirectionVector.from_dict(path_args)
 
-    def create_dhc_collections(self) -> list[DownholeAttributes]:
+    def create_dhc_collections(self) -> DownholeAttributes:
         """Create collections of data associated with the downholes"""
-        distance_go = self.create_dhc_collection_distance()
+        collections: DownholeAttributes = []
 
-        distance_table_go = DownholeAttributes_Item_DistanceTable(
-            name="distances", holes=self.create_dhc_hole_chunks(), distance=distance_go
-        )
-        return [distance_table_go]
+        for measurement_table in self.dhc.get_measurement_tables():
+            if isinstance(measurement_table, DistanceMeasurementTable):
+                collections.append(self.create_dhc_collection_distance(measurement_table))
+            elif isinstance(measurement_table, IntervalMeasurementTable):
+                collections.append(self.create_dhc_collection_interval(measurement_table))
 
-    def create_dhc_collection_distance(self) -> Distance:
+        return collections
+
+    def create_dhc_collection_distance(self, mt: DistanceMeasurementTable) -> DownholeAttributes_Item_DistanceTable:
         """Create a distance based attribute collection"""
-        distances_table = self.collection_distances_table()
+        distances_table = self.collection_distances_table(mt)
         distances_args = self.data_client.save_table(distances_table)
         distances_go = FloatArray1.from_dict(distances_args)
 
         attributes = []
 
-        attribute_tables = self.collection_attribute_tables()
+        attribute_tables = self.collection_attribute_tables(mt)
         for attribute_name, attribute_table in attribute_tables.items():
             attribute_go = self.create_continuous_attribute_component(
                 attribute_name,
@@ -170,13 +190,44 @@ class DownholeCollectionToGeoscienceObject:
 
         distances_unit = UnitLength_UnitCategories("m")
 
-        distance_go = Distance(
+        distance_go = DistanceTable_Distance(
             attributes=attributes,
             unit=distances_unit,
             values=distances_go,
         )
 
-        return distance_go
+        distance_table_go = DownholeAttributes_Item_DistanceTable(
+            name="distances", holes=self.create_dhc_hole_chunks(mt), distance=distance_go
+        )
+
+        return distance_table_go
+
+    def create_dhc_collection_interval(self, mt: IntervalMeasurementTable) -> DownholeAttributes_Item_IntervalTable:
+        start_end_table = self.collection_start_end_table(mt)
+        start_end_args = self.data_client.save_table(start_end_table)
+        start_end_go = FloatArray2.from_dict(start_end_args)
+
+        intervals_go = Intervals(start_and_end=start_end_go)
+
+        attributes = []
+
+        attribute_tables = self.collection_attribute_tables(mt)
+        for attribute_name, attribute_table in attribute_tables.items():
+            attribute_go = self.create_continuous_attribute_component(
+                attribute_name,
+                attribute_table,
+            )
+            attributes.append(attribute_go)
+
+        interval_table_from_to = IntervalTable_FromTo(intervals=intervals_go, attributes=attributes)
+
+        interval_table_go = DownholeAttributes_Item_IntervalTable(
+            name="intervals",
+            from_to=interval_table_from_to,
+            holes=self.create_dhc_hole_chunks(mt),
+        )
+
+        return interval_table_go
 
     def create_continuous_attribute_component(self, name: str, attribute_table: pa.Table) -> ContinuousAttribute:
         """Create a continuous attribute"""
@@ -192,7 +243,7 @@ class DownholeCollectionToGeoscienceObject:
 
     def coordinates_table(self) -> pa.Table:
         """Create a table of 3D coordinates from collar information"""
-        coordinates_df = self.dhc.collars[["x", "y", "z"]]
+        coordinates_df = self.dhc.collars.df[["x", "y", "z"]]
         coordinates_schema = pa.schema(
             [
                 pa.field("x", pa.float64()),
@@ -212,22 +263,20 @@ class DownholeCollectionToGeoscienceObject:
             ]
         )
         arrays = [
-            pa.array(self.dhc.collars["final_depth"], type=pa.float64()),
-            pa.array(self.dhc.collars["final_depth"], type=pa.float64()),
-            pa.array(self.dhc.collars["final_depth"], type=pa.float64()),
+            pa.array(self.dhc.collars.df["final_depth"], type=pa.float64()),
+            pa.array(self.dhc.collars.df["final_depth"], type=pa.float64()),
+            pa.array(self.dhc.collars.df["final_depth"], type=pa.float64()),
         ]
         return pa.Table.from_arrays(arrays, schema=distances_schema)
 
-    def holes_table(self) -> pa.Table:
+    def holes_table(self, mt: MeasurementTableAdapter) -> pa.Table:
         """
         Create hole chunk metadata table describing data organisation for each downhole.
 
         Generates indexing information that describes where each hole's data begins
         (offset) and how many data points it contains (count) in a flattened data array.
         """
-        grouped = (
-            self.dhc.measurements.groupby("hole_index", sort=False).size().reset_index().rename(columns={0: "count"})
-        )
+        grouped = mt.df.groupby("hole_index", sort=False).size().reset_index().rename(columns={0: "count"})
         grouped["offset"] = grouped["count"].shift(1, fill_value=0).cumsum()
         holes_schema = pa.schema(
             [
@@ -246,7 +295,7 @@ class DownholeCollectionToGeoscienceObject:
     def hole_id_tables(self) -> tuple[pa.Table, pa.Table]:
         """Create lookup and index table for hole ids"""
         lookup_table = pa.table(
-            {"key": self.dhc.collars["hole_index"], "value": self.dhc.collars["hole_id"]},
+            {"key": self.dhc.collars.df["hole_index"], "value": self.dhc.collars.df["hole_id"]},
             schema=pa.schema(
                 [
                     pa.field("key", pa.int32()),
@@ -255,7 +304,7 @@ class DownholeCollectionToGeoscienceObject:
             ),
         )
         integer_array_table = pa.table(
-            {"data": self.dhc.collars["hole_index"]}, schema=pa.schema([pa.field("data", pa.int32())])
+            {"data": self.dhc.collars.df["hole_index"]}, schema=pa.schema([pa.field("data", pa.int32())])
         )
         return (lookup_table, integer_array_table)
 
@@ -265,7 +314,7 @@ class DownholeCollectionToGeoscienceObject:
 
         - Currently assumes all holes are vertical (azimuth=0.0, dip=90.0)
         - Positive dip indicates downward direction
-        - Distance values are taken from penetrationLength in each measurement point
+        - Distance values are taken from first distance table found
         """
         path_schema = pa.schema(
             [
@@ -274,33 +323,47 @@ class DownholeCollectionToGeoscienceObject:
                 pa.field("dip", pa.float64()),
             ]
         )
-        num_measurements = len(self.dhc.measurements)
+        measurements = self.get_first_distance_measurement_table()
+        num_measurements = len(measurements.df)
 
         arrays = [
-            pa.array(self.dhc.measurements["penetrationLength"], type=pa.float64()),
+            pa.array(measurements.get_depth_values(), type=pa.float64()),
             pa.array([AZIMUTH] * num_measurements, type=pa.float64()),
             pa.array([DIP] * num_measurements, type=pa.float64()),
         ]
 
         return pa.Table.from_arrays(arrays, schema=path_schema)
 
-    def collection_distances_table(self) -> pa.Table:
+    def collection_distances_table(self, mt: DistanceMeasurementTable) -> pa.Table:
         """
         Create table of all distances.
-
-        Note:
-        - Is this only applicable to distance based measurements?
-        - Can depth column be used if penetration length is missing (will it ever be missing)?
         """
-        distances_df = self.dhc.measurements[["penetrationLength"]].rename(columns={"penetrationLength": "values"})
+        distances_df = mt.df[[mt.get_primary_column()]].rename(columns={mt.get_primary_column(): "values"})
         distances_schema = pa.schema([pa.field("values", pa.float64())])
         return pa.Table.from_pandas(distances_df, schema=distances_schema)
 
-    def collection_attribute_tables(self) -> dict[str, pa.Table]:
+    def collection_start_end_table(self, mt: IntervalMeasurementTable) -> pa.Table:
+        """
+        Create table of intervals: start/end
+        """
+        intervals_df = mt.df[[mt.get_from_column(), mt.get_to_column()]].rename(
+            columns={mt.get_from_column(): "from", mt.get_to_column(): "to"}
+        )
+        intervals_schema = pa.schema([pa.field("from", pa.float64()), pa.field("to", pa.float64())])
+        return pa.Table.from_pandas(intervals_df, intervals_schema)
+
+    def collection_attribute_tables(self, mt: MeasurementTableAdapter) -> dict[str, pa.Table]:
         """Create a table for each attribute and their measurements"""
         attribute_tables = {}
         attribute_schema = pa.schema([("data", pa.float64())])
-        for attribute_name in self.dhc.measurements.columns[2:]:
-            attribute_df = self.dhc.measurements[[attribute_name]].rename(columns={attribute_name: "data"})
+        for attribute_name in mt.get_attribute_columns():
+            attribute_df = mt.df[[attribute_name]].rename(columns={attribute_name: "data"})
             attribute_tables[attribute_name] = pa.Table.from_pandas(attribute_df, schema=attribute_schema)
         return attribute_tables
+
+    def get_first_distance_measurement_table(self) -> DistanceMeasurementTable:
+        """Move this to intermediary object?"""
+        distance_tables = self.dhc.get_measurement_tables(filter=[DistanceMeasurementTable])
+        if len(distance_tables) >= 1 and isinstance(distance_tables[0], DistanceMeasurementTable):
+            return distance_tables[0]
+        raise ValueError("No distance measurement tables found.")
