@@ -193,15 +193,46 @@ class TestCreateCoordinateReferenceSystem:
         assert crs.epsg_code == 32633
 
     def test_creates_wkt_crs(self, dhc_distance, mock_data_client) -> None:
-        dhc_distance.coordinate_reference_system = 'PROJCS["WGS 84 / UTM zone 33N"]'
+        ogc_wkt_string = """
+PROJCS["NZGD2000 / New Zealand Transverse Mercator 2000",
+    GEOGCS["NZGD2000",
+        DATUM["New Zealand Geodetic Datum 2000",
+            SPHEROID["GRS 1980", 6378137, 298.257222101],
+            TOWGS84[0,0,0,0,0,0,0]
+        ],
+        PRIMEM["Greenwich", 0],
+        UNIT["degree", 0.0174532925199433],
+        AUTHORITY["EPSG","4167"]
+    ],
+    PROJECTION["Transverse_Mercator"],
+    PARAMETER["latitude_of_origin", 0],
+    PARAMETER["central_meridian", 173],
+    PARAMETER["scale_factor", 0.9996],
+    PARAMETER["false_easting", 1600000],
+    PARAMETER["false_northing", 10000000],
+    UNIT["metre",1],
+    AUTHORITY["EPSG","2193"]
+]
+"""
+        expected_ogc_wkt = """BOUNDCRS[SOURCECRS[PROJCRS["NZGD2000 / New Zealand Transverse Mercator 2000",BASEGEOGCRS["NZGD2000",DATUM["New Zealand Geodetic Datum 2000",ELLIPSOID["GRS 1980",6378137,298.257222101,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4167]],CONVERSION["unnamed",METHOD["Transverse Mercator",ID["EPSG",9807]],PARAMETER["Latitude of natural origin",0,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8801]],PARAMETER["Longitude of natural origin",173,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8802]],PARAMETER["Scale factor at natural origin",0.9996,SCALEUNIT["unity",1],ID["EPSG",8805]],PARAMETER["False easting",1600000,LENGTHUNIT["metre",1],ID["EPSG",8806]],PARAMETER["False northing",10000000,LENGTHUNIT["metre",1],ID["EPSG",8807]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",2193]]],TARGETCRS[GEOGCRS["WGS 84",DATUM["World Geodetic System 1984",ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["latitude",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["longitude",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4326]]],ABRIDGEDTRANSFORMATION["Transformation from NZGD2000 to WGS84",METHOD["Position Vector transformation (geog2D domain)",ID["EPSG",9606]],PARAMETER["X-axis translation",0,ID["EPSG",8605]],PARAMETER["Y-axis translation",0,ID["EPSG",8606]],PARAMETER["Z-axis translation",0,ID["EPSG",8607]],PARAMETER["X-axis rotation",0,ID["EPSG",8608]],PARAMETER["Y-axis rotation",0,ID["EPSG",8609]],PARAMETER["Z-axis rotation",0,ID["EPSG",8610]],PARAMETER["Scale difference",1,ID["EPSG",8611]]]]"""
+
+        dhc_distance.coordinate_reference_system = ogc_wkt_string
         converter = DownholeCollectionToGeoscienceObject(dhc_distance, mock_data_client)
 
         crs = converter.create_coordinate_reference_system()
 
-        assert crs.ogc_wkt == 'PROJCS["WGS 84 / UTM zone 33N"]'
+        assert crs.ogc_wkt == expected_ogc_wkt
 
-    def test_creates_unspecified_crs(self, dhc_distance, mock_data_client) -> None:
+    def test_creates_unspecified_crs_from_none(self, dhc_distance, mock_data_client) -> None:
         dhc_distance.coordinate_reference_system = None
+        converter = DownholeCollectionToGeoscienceObject(dhc_distance, mock_data_client)
+
+        crs = converter.create_coordinate_reference_system()
+
+        assert crs == "unspecified"
+
+    def test_creates_unspecified_crs_from_string_literal_unspecified(self, dhc_distance, mock_data_client) -> None:
+        dhc_distance.coordinate_reference_system = "unspecified"
         converter = DownholeCollectionToGeoscienceObject(dhc_distance, mock_data_client)
 
         crs = converter.create_coordinate_reference_system()
