@@ -11,14 +11,13 @@
 
 from evo.data_converters.common.objects.attributes import AttributeFactory
 from evo.data_converters.common.objects.downhole_collection.tables import MeasurementTableAdapter
+from evo.data_converters.common.crs import crs_from_any
 import evo.logging
 from evo.objects.utils.data import ObjectDataClient
 from evo_schemas.components import (
     BoundingBox_V1_0_1 as BoundingBox,
     CategoryData_V1_0_1 as CategoryData,
     Crs_V1_0_1 as Crs,
-    Crs_V1_0_1_EpsgCode as Crs_EpsgCode,
-    Crs_V1_0_1_OgcWkt as Crs_OgcWkt,
     DownholeAttributes_V1_0_0 as DownholeAttributes,
     DownholeAttributes_V1_0_0_Item_DistanceTable as DownholeAttributes_Item_DistanceTable,
     DownholeAttributes_V1_0_0_Item_IntervalTable as DownholeAttributes_Item_IntervalTable,
@@ -90,11 +89,7 @@ class DownholeCollectionToGeoscienceObject:
         return dhc_go
 
     def create_coordinate_reference_system(self) -> Crs:
-        if isinstance(self.dhc.coordinate_reference_system, str):
-            return Crs_OgcWkt(ogc_wkt=self.dhc.coordinate_reference_system)
-        if isinstance(self.dhc.coordinate_reference_system, int):
-            return Crs_EpsgCode(epsg_code=self.dhc.coordinate_reference_system)
-        return "unspecified"
+        return crs_from_any(self.dhc.coordinate_reference_system)
 
     def create_bounding_box(self) -> BoundingBox:
         """Create a Bounding Box object"""
