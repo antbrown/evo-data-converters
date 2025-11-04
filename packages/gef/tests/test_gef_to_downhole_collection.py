@@ -485,6 +485,25 @@ class TestCreateCollarsDataframe:
 
         assert len(collars_df) == 2
 
+    def test_creates_dataframe_with_differing_attributes(
+        self, builder: DownholeCollectionBuilder, mock_cpt_data, mock_cpt_data_2, mock_cpt_data_3
+    ) -> None:
+        builder.collar_rows.append(builder._create_collar_row(1, "CPT-001", mock_cpt_data))
+        builder.collar_rows.append(builder._create_collar_row(2, "CPT-002", mock_cpt_data_2))
+        builder.collar_rows.append(builder._create_collar_row(3, "CPT-003", mock_cpt_data_3))
+
+        collars_df = builder._create_collars_dataframe()
+
+        # cone_size only exists in the 3rd cpt file
+        assert pd.isna(collars_df.iloc[0]["cone_size"])
+        assert pd.isna(collars_df.iloc[1]["cone_size"])
+        assert collars_df.iloc[2]["cone_size"] == 3.14
+
+        # signed_off appears in the first two cpt files
+        assert not collars_df.iloc[0]["signed_off"]
+        assert collars_df.iloc[1]["signed_off"]
+        assert pd.isna(collars_df.iloc[2]["signed_off"])
+
 
 class TestCreateMeasurementsDataframe:
     @patch("evo.data_converters.gef.converter.gef_to_downhole_collection.logger")
