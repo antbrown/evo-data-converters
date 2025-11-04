@@ -231,14 +231,6 @@ PROJCS["NZGD2000 / New Zealand Transverse Mercator 2000",
 
         assert crs == "unspecified"
 
-    def test_creates_unspecified_crs_from_string_literal_unspecified(self, dhc_distance, mock_data_client) -> None:
-        dhc_distance.coordinate_reference_system = "unspecified"
-        converter = DownholeCollectionToGeoscienceObject(dhc_distance, mock_data_client)
-
-        crs = converter.create_coordinate_reference_system()
-
-        assert crs == "unspecified"
-
 
 class TestCreateBoundingBox:
     def test_creates_bounding_box_from_collar_data(self, converter_distance) -> None:

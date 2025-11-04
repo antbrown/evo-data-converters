@@ -80,7 +80,7 @@ class TestDownholeCollectionInitialization:
         assert dc.name == "Test Collection"
         assert dc.collars == valid_collars
         assert len(dc.measurements) == 0
-        assert dc.coordinate_reference_system == "unspecified"
+        assert dc.coordinate_reference_system is None
 
     def test_init_with_epsg_code(self, valid_collars):
         """Test initialization with EPSG code."""
