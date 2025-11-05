@@ -42,8 +42,9 @@ class AttributeFactory:
     @staticmethod
     def create(name: str, series: pd.Series, client: ObjectDataClient) -> OneOfAttribute_Item | None:
         nan_values_list: list[typing.Any] = list(series.attrs["nan_values"]) if "nan_values" in series.attrs else []
+        inferred_type: str = pd.api.types.infer_dtype(series, skipna=True)
 
-        if pd.api.types.is_float_dtype(series):
+        if inferred_type in ["floating", "mixed-integer-float"]:
             table = PyArrowTableFactory.create_continuous_table(series)
             table_info = client.save_table(table)
             float_array = FloatArray1.from_dict(table_info)
@@ -54,7 +55,7 @@ class AttributeFactory:
                 values=float_array,
             )
 
-        elif pd.api.types.is_string_dtype(series):
+        elif inferred_type == "string":
             table = PyArrowTableFactory.create_string_table(series)
             table_info = client.save_table(table)
             string_array = StringArray.from_dict(table_info)

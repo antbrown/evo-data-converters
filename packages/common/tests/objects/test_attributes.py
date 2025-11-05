@@ -62,7 +62,7 @@ class TestPyArrowTableFactory:
 class TestAttributeFactory:
     def test_create_with_float_series(self, mock_data_client) -> None:
         """Test creating attribute from float series."""
-        series = pd.Series([1.0, 2.0, 3.0], dtype=float)
+        series = pd.Series([1.0, 2.0, 3.0])
 
         result = AttributeFactory.create("test_attr", series, mock_data_client)
 
@@ -74,7 +74,7 @@ class TestAttributeFactory:
 
     def test_create_with_float_series_and_nan_values(self, mock_data_client) -> None:
         """Test creating attribute with nan_values in series attributes."""
-        series = pd.Series([1.0, 2.0, 3.0], dtype=float)
+        series = pd.Series([1.0, 2.0, 3.0])
         series.attrs["nan_values"] = [-999.0, -9999.0]
 
         result = AttributeFactory.create("test_attr", series, mock_data_client)
@@ -84,7 +84,7 @@ class TestAttributeFactory:
 
     def test_create_with_string_series(self, mock_data_client) -> None:
         """Test creating attribute from string series."""
-        series = pd.Series(["bob", pd.NA, "sally", "edith"], dtype="string")
+        series = pd.Series(["bob", pd.NA, "sally", "edith"])
 
         result = AttributeFactory.create("test_attr", series, mock_data_client)
 
