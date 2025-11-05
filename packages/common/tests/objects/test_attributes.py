@@ -15,6 +15,7 @@ import pyarrow as pa
 from evo.data_converters.common.objects.attributes import PyArrowTableFactory, AttributeFactory
 from evo_schemas.components import (
     ContinuousAttribute_V1_1_0 as ContinuousAttribute,
+    StringAttribute_V1_1_0 as StringAttribute,
 )
 
 
@@ -38,11 +39,30 @@ class TestPyArrowTableFactory:
         assert table.num_rows == 4
         assert table.column_names == ["data"]
 
+    def test_create_string_table_basic(self) -> None:
+        """Test creating a table from a simple string series."""
+        series = pd.Series(["bob", "sally", "edith"])
+        table = PyArrowTableFactory.create_string_table(series)
+
+        assert isinstance(table, pa.Table)
+        assert table.num_rows == 3
+        assert table.column_names == ["data"]
+        assert table.schema[0].type == pa.string()
+
+    def test_create_string_table_with_nans(self) -> None:
+        """Test creating a table from a series with NaN values."""
+        series = pd.Series(["bob", pd.NA, "sally", "edith"])
+        table = PyArrowTableFactory.create_string_table(series)
+
+        assert isinstance(table, pa.Table)
+        assert table.num_rows == 4
+        assert table.column_names == ["data"]
+
 
 class TestAttributeFactory:
     def test_create_with_float_series(self, mock_data_client) -> None:
         """Test creating attribute from float series."""
-        series = pd.Series([1.0, 2.0, 3.0], dtype=float)
+        series = pd.Series([1.0, 2.0, 3.0])
 
         result = AttributeFactory.create("test_attr", series, mock_data_client)
 
@@ -54,7 +74,7 @@ class TestAttributeFactory:
 
     def test_create_with_float_series_and_nan_values(self, mock_data_client) -> None:
         """Test creating attribute with nan_values in series attributes."""
-        series = pd.Series([1.0, 2.0, 3.0], dtype=float)
+        series = pd.Series([1.0, 2.0, 3.0])
         series.attrs["nan_values"] = [-999.0, -9999.0]
 
         result = AttributeFactory.create("test_attr", series, mock_data_client)
@@ -62,19 +82,23 @@ class TestAttributeFactory:
         assert result is not None
         assert result.nan_description.values == [-999.0, -9999.0]
 
-    def test_create_with_non_float_series_returns_none(self, mock_data_client) -> None:
-        """Test that non-float series returns None."""
-        series = pd.Series(["a", "b", "c"], dtype=str)
+    def test_create_with_string_series(self, mock_data_client) -> None:
+        """Test creating attribute from string series."""
+        series = pd.Series(["bob", pd.NA, "sally", "edith"])
 
         result = AttributeFactory.create("test_attr", series, mock_data_client)
 
-        assert result is None
-        mock_data_client.save_table.assert_not_called()
+        assert result is not None
+        assert isinstance(result, StringAttribute)
+        assert result.key == "test_attr"
+        assert result.name == "test_attr"
+        mock_data_client.save_table.assert_called_once()
 
-    def test_create_with_integer_series_returns_none(self, mock_data_client) -> None:
-        """Test that integer series returns None."""
+    def test_create_with_non_supported_series_returns_none(self, mock_data_client) -> None:
+        """Test that non-supported series returns None."""
         series = pd.Series([1, 2, 3], dtype=int)
 
         result = AttributeFactory.create("test_attr", series, mock_data_client)
 
         assert result is None
+        mock_data_client.save_table.assert_not_called()
