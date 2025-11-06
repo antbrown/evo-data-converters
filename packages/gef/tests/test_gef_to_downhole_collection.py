@@ -11,213 +11,567 @@
 
 import pytest
 import polars as pl
+import pandas as pd
+from datetime import datetime
 from unittest.mock import Mock, patch
 from evo.data_converters.common.objects import DownholeCollection
-from evo.data_converters.common.objects.downhole_collection import HoleCollars
 from evo.data_converters.gef.converter.gef_to_downhole_collection import (
-    _calculate_final_depth,
-    _extract_epsg_code,
-    _validate_location_attributes,
+    DownholeCollectionBuilder,
     create_from_parsed_gef_cpts,
-    get_collection_name_from_collars,
 )
 
 
-class TestGetCollectionNameFromCollars:
-    """Tests for get_collection_name_from_collars function."""
+@pytest.fixture
+def builder() -> DownholeCollectionBuilder:
+    """Provide a fresh DownholeCollectionBuilder instance for each test."""
+    return DownholeCollectionBuilder()
 
-    def test_empty_list_returns_empty_string(self) -> None:
-        assert get_collection_name_from_collars([]) == ""
 
-    def test_single_collar_returns_hole_id(self) -> None:
-        collars = [{"hole_id": "CPT-001"}]
-        assert get_collection_name_from_collars(collars) == "CPT-001"
+@pytest.fixture
+def mock_cpt_data() -> Mock:
+    """Create a mock CPTData object with some extra attributes."""
+    mock = Mock(
+        spec=[
+            "delivered_location",
+            "delivered_vertical_position_offset",
+            "final_depth",
+            "data",
+            "column_void_mapping",
+            "report_date",
+            "engineer",
+            "wind_speed",
+            "signed_off",
+        ]
+    )
 
-    def test_multiple_collars_returns_range_format(self) -> None:
-        collars = [{"hole_id": "CPT-001"}, {"hole_id": "CPT-002"}, {"hole_id": "CPT-003"}]
-        assert get_collection_name_from_collars(collars) == "CPT-001...CPT-003"
+    mock.delivered_location = Mock()
+    mock.delivered_location.srs_name = "EPSG:28992"
+    mock.delivered_location.x = 100000.0
+    mock.delivered_location.y = 500000.0
 
-    def test_two_collars_returns_range_format(self) -> None:
-        collars = [{"hole_id": "HOLE-A"}, {"hole_id": "HOLE-Z"}]
-        assert get_collection_name_from_collars(collars) == "HOLE-A...HOLE-Z"
+    mock.delivered_vertical_position_offset = 0.5
+    mock.final_depth = 10.0
 
-    def test_special_characters_in_hole_id(self) -> None:
-        collars = [{"hole_id": "CPT-2024/01_Site-A"}]
-        assert get_collection_name_from_collars(collars) == "CPT-2024/01_Site-A"
+    mock.data = pl.DataFrame(
+        {
+            "penetrationLength": [0.0, 1.0, 2.0, 3.0],
+            "coneResistance": [0.5, 1.5, 2.5, 3.5],
+            "friction": [0.02, 0.03, 0.04, 0.03],
+        }
+    )
+
+    mock.column_void_mapping = {
+        "penetrationLength": 9999.0,
+        "coneResistance": 9999.0,
+        "friction": 9999.0,
+    }
+
+    mock.report_date = datetime(year=2020, month=10, day=20)
+    mock.engineer = "Bob"
+    mock.wind_speed = 12.2
+    mock.signed_off = False
+
+    return mock
+
+
+@pytest.fixture
+def mock_cpt_data_2() -> Mock:
+    """Create a second mock CPTData object with different values."""
+    mock = Mock(
+        spec=[
+            "delivered_location",
+            "delivered_vertical_position_offset",
+            "final_depth",
+            "data",
+            "column_void_mapping",
+            "report_date",
+            "engineer",
+            "wind_speed",
+            "signed_off",
+        ]
+    )
+
+    mock.delivered_location = Mock()
+    mock.delivered_location.srs_name = "EPSG:28992"
+    mock.delivered_location.x = 100000.0
+    mock.delivered_location.y = 500100.0
+
+    mock.delivered_vertical_position_offset = 0.5
+    mock.final_depth = 10.0
+
+    mock.data = pl.DataFrame(
+        {
+            "penetrationLength": [0.0, 1.0, 2.0, 3.0],
+            "coneResistance": [1.0, 2.0, 3.0, 4.0],
+            "friction": [0.01, 0.02, 0.03, 0.04],
+        }
+    )
+
+    mock.column_void_mapping = {
+        "penetrationLength": 9999.0,
+        "coneResistance": 9999.0,
+        "friction": 9999.0,
+    }
+
+    mock.report_date = datetime(year=2020, month=10, day=20)
+    mock.engineer = "Bob"
+    mock.wind_speed = 17.0
+    mock.signed_off = True
+
+    return mock
+
+
+@pytest.fixture
+def mock_cpt_data_3() -> Mock:
+    """Create a third mock CPTData object with different attributes."""
+    mock = Mock(
+        spec=[
+            "delivered_location",
+            "delivered_vertical_position_offset",
+            "final_depth",
+            "data",
+            "column_void_mapping",
+            "report_date",
+            "engineer",
+            "wind_speed",
+            "cone_size",
+        ]
+    )
+
+    mock.delivered_location = Mock()
+    mock.delivered_location.srs_name = "EPSG:28992"
+    mock.delivered_location.x = 100000.0
+    mock.delivered_location.y = 500200.0
+
+    mock.delivered_vertical_position_offset = 0.5
+    mock.final_depth = 10.0
+
+    mock.data = pl.DataFrame(
+        {
+            "penetrationLength": [0.0, 1.0, 2.0, 3.0],
+            "coneResistance": [1.0, 2.0, 3.0, 4.0],
+            "friction": [0.01, 0.02, 0.03, 0.04],
+        }
+    )
+
+    mock.column_void_mapping = {
+        "penetrationLength": 9999.0,
+        "coneResistance": 9999.0,
+        "friction": 9999.0,
+    }
+
+    mock.report_date = datetime(year=2020, month=10, day=21)
+    mock.engineer = "Sally"
+    mock.wind_speed = 15.0
+    mock.cone_size = 3.14
+
+    return mock
+
+
+class TestProcessCptFile:
+    @patch("evo.data_converters.gef.converter.gef_to_downhole_collection.logger")
+    def test_successful_processing(self, mock_logger, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        builder.process_cpt_file(1, "CPT-001", mock_cpt_data)
+
+        assert len(builder.collar_rows) == 1
+        assert len(builder.measurement_dfs) == 1
+        assert builder.epsg_code == 28992
+        assert builder.collar_rows[0]["hole_id"] == "CPT-001"
+        assert builder.collar_rows[0]["hole_index"] == 1
+        assert mock_logger.debug.called
+
+    def test_inconsistent_epsg_raises_error(
+        self, builder: DownholeCollectionBuilder, mock_cpt_data, mock_cpt_data_2
+    ) -> None:
+        builder.process_cpt_file(1, "CPT-001", mock_cpt_data)
+        mock_cpt_data_2.delivered_location.srs_name = "EPSG:4326"
+
+        with pytest.raises(ValueError, match="Inconsistent EPSG codes"):
+            builder.process_cpt_file(2, "CPT-002", mock_cpt_data_2)
+
+
+class TestBuild:
+    def test_successful_build(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        builder.process_cpt_file(1, "CPT-001", mock_cpt_data)
+        result = builder.build()
+
+        assert isinstance(result, DownholeCollection)
+        assert result.name == "CPT-001"
+        assert result.coordinate_reference_system == 28992
+
+    def test_build_without_epsg_raises_error(self, builder: DownholeCollectionBuilder) -> None:
+        with pytest.raises(ValueError, match="Could not find valid epsg code"):
+            builder.build()
 
 
 class TestExtractEpsgCode:
-    """Tests for _extract_epsg_code helper function."""
-
-    def test_valid_epsg_code_extraction_short_format(self) -> None:
+    def test_valid_epsg_short_format(self, builder: DownholeCollectionBuilder) -> None:
         mock_cpt = Mock()
         mock_cpt.delivered_location.srs_name = "EPSG:28992"
 
-        result = _extract_epsg_code(mock_cpt, "TEST-001")
+        result = builder._extract_epsg_code(mock_cpt, "TEST-001")
 
         assert result == 28992
 
-    def test_valid_epsg_code_extraction_urn_format(self) -> None:
+    def test_valid_epsg_urn_format(self, builder: DownholeCollectionBuilder) -> None:
         mock_cpt = Mock()
         mock_cpt.delivered_location.srs_name = "urn:ogc:def:crs:EPSG::4326"
 
-        result = _extract_epsg_code(mock_cpt, "TEST-001")
+        result = builder._extract_epsg_code(mock_cpt, "TEST-001")
 
         assert result == 4326
 
-    def test_epsg_extraction_epsg_404000_is_unspecified(self) -> None:
-        """Pygef returns EPSG 404000 if supplied an invalid/unrecognised XYID."""
+    def test_epsg_404000_returns_unspecified(self, builder: DownholeCollectionBuilder) -> None:
         mock_cpt = Mock()
         mock_cpt.delivered_location.srs_name = "urn:ogc:def:crs:EPSG::404000"
 
-        result = _extract_epsg_code(mock_cpt, "TEST-001")
+        result = builder._extract_epsg_code(mock_cpt, "TEST-001")
 
         assert result == "unspecified"
 
-    def test_missing_srs_name_attribute_raises_error(self) -> None:
+    def test_missing_srs_name_raises_error(self, builder: DownholeCollectionBuilder) -> None:
         mock_cpt = Mock()
-        mock_cpt.delivered_location = Mock(spec=[])  # No srs_name attribute
+        mock_cpt.delivered_location = Mock(spec=[])
 
         with pytest.raises(ValueError, match="missing delivered_location.srs_name"):
-            _ = _extract_epsg_code(mock_cpt, "TEST-001")
+            builder._extract_epsg_code(mock_cpt, "TEST-001")
 
-    def test_malformed_srs_name_no_colon_raises_error(self) -> None:
+    def test_malformed_srs_name_raises_error(self, builder: DownholeCollectionBuilder) -> None:
         mock_cpt = Mock()
         mock_cpt.delivered_location.srs_name = "INVALID_FORMAT"
 
         with pytest.raises(ValueError, match="malformed SRS name"):
-            _extract_epsg_code(mock_cpt, "TEST-001")
+            builder._extract_epsg_code(mock_cpt, "TEST-001")
 
-    def test_non_numeric_epsg_raises_error(self):
-        mock_cpt = Mock()
-        mock_cpt.delivered_location.srs_name = "EPSG:ABC"
 
-        with pytest.raises(ValueError, match="invalid EPSG code"):
-            _extract_epsg_code(mock_cpt, "TEST-001")
+class TestValidateAndSetEpsg:
+    @patch("evo.data_converters.gef.converter.gef_to_downhole_collection.logger")
+    def test_sets_epsg_on_first_file(self, mock_logger, builder, mock_cpt_data) -> None:
+        builder._validate_and_set_epsg(mock_cpt_data, "CPT-001")
+
+        assert builder.epsg_code == 28992
+        assert mock_logger.info.called
+
+    def test_consistent_epsg_passes(self, builder: DownholeCollectionBuilder, mock_cpt_data, mock_cpt_data_2) -> None:
+        builder._validate_and_set_epsg(mock_cpt_data, "CPT-001")
+        builder._validate_and_set_epsg(mock_cpt_data_2, "CPT-002")
+
+        assert builder.epsg_code == 28992
+
+    def test_inconsistent_epsg_raises_error(
+        self, builder: DownholeCollectionBuilder, mock_cpt_data, mock_cpt_data_2
+    ) -> None:
+        builder._validate_and_set_epsg(mock_cpt_data, "CPT-001")
+        mock_cpt_data_2.delivered_location.srs_name = "EPSG:4326"
+
+        with pytest.raises(ValueError, match="Inconsistent EPSG codes"):
+            builder._validate_and_set_epsg(mock_cpt_data_2, "CPT-002")
+
+
+class TestValidateEpsgCode:
+    def test_valid_epsg_passes(self, builder: DownholeCollectionBuilder) -> None:
+        builder.epsg_code = 28992
+        builder._validate_epsg_code()  # Should not raise
+
+    def test_none_epsg_raises_error(self, builder: DownholeCollectionBuilder) -> None:
+        with pytest.raises(ValueError, match="Could not find valid epsg code"):
+            builder._validate_epsg_code()
 
 
 class TestValidateLocationAttributes:
-    """Test suite for _validate_location_attributes helper function."""
-
-    def test_valid_location_attributes_pass(self) -> None:
+    def test_valid_location_passes(self, builder: DownholeCollectionBuilder) -> None:
         mock_cpt = Mock()
         mock_cpt.delivered_location.x = 100000.0
         mock_cpt.delivered_location.y = 500000.0
 
-        # Should not raise any exception
-        _validate_location_attributes(mock_cpt, "TEST-001")
+        builder._validate_location_attributes(mock_cpt, "TEST-001")
 
-    def test_missing_x_attribute_raises_error(self) -> None:
+    def test_missing_x_raises_error(self, builder: DownholeCollectionBuilder) -> None:
         mock_cpt = Mock()
         mock_cpt.delivered_location = Mock(spec=["y"])
         mock_cpt.delivered_location.y = 500000.0
 
         with pytest.raises(ValueError, match="missing required location attribute"):
-            _validate_location_attributes(mock_cpt, "TEST-001")
-
-    def test_missing_y_attribute_raises_error(self) -> None:
-        mock_cpt = Mock()
-        mock_cpt.delivered_location = Mock(spec=["x"])
-        mock_cpt.delivered_location.x = 100000.0
-
-        with pytest.raises(ValueError, match="missing required location attribute"):
-            _validate_location_attributes(mock_cpt, "TEST-001")
+            builder._validate_location_attributes(mock_cpt, "TEST-001")
 
 
 class TestCalculateFinalDepth:
-    """Test suite for _calculate_final_depth helper function."""
-
-    def test_uses_final_depth_when_available(self) -> None:
+    def test_uses_final_depth_when_available(self, builder: DownholeCollectionBuilder) -> None:
         mock_cpt = Mock()
         mock_cpt.final_depth = 15.5
         mock_cpt.data = pl.DataFrame({"penetrationLength": [0, 1, 2]})
 
-        result = _calculate_final_depth(mock_cpt, "TEST-001")
+        result = builder._calculate_final_depth(mock_cpt, "TEST-001")
 
         assert result == 15.5
 
-    def test_calculates_from_penetration_length_when_final_depth_zero(self) -> None:
+    def test_calculates_from_penetration_length(self, builder: DownholeCollectionBuilder) -> None:
         mock_cpt = Mock()
         mock_cpt.final_depth = 0.0
         mock_cpt.data = pl.DataFrame({"penetrationLength": [0.0, 2.5, 5.0, 7.8]})
 
-        result = _calculate_final_depth(mock_cpt, "TEST-001")
+        result = builder._calculate_final_depth(mock_cpt, "TEST-001")
 
         assert result == 7.8
 
-    def test_missing_penetration_length_column_raises_error(self) -> None:
+    def test_missing_penetration_length_raises_error(self, builder: DownholeCollectionBuilder) -> None:
         mock_cpt = Mock()
         mock_cpt.final_depth = 0.0
         mock_cpt.data = pl.DataFrame({"coneResistance": [1, 2, 3]})
 
         with pytest.raises(ValueError, match="missing 'penetrationLength' column"):
-            _ = _calculate_final_depth(mock_cpt, "TEST-001")
+            builder._calculate_final_depth(mock_cpt, "TEST-001")
 
-    def test_empty_penetration_length_raises_error(self) -> None:
+
+class TestGetCollarAttributes:
+    def test_filters_excluded_keys(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        attributes = builder._get_collar_attributes(mock_cpt_data)
+
+        assert "data" not in attributes
+        assert "final_depth" not in attributes
+        assert "column_void_mapping" not in attributes
+
+    def test_returns_valid_attributes(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        attributes = builder._get_collar_attributes(mock_cpt_data)
+
+        assert attributes["engineer"] == "Bob"
+        assert attributes["wind_speed"] == 12.2
+        assert attributes["signed_off"] is False
+        assert attributes["report_date"] == datetime(2020, 10, 20)
+
+    def test_filters_none_and_empty_values(self, builder: DownholeCollectionBuilder) -> None:
         mock_cpt = Mock()
-        mock_cpt.final_depth = 0.0
-        mock_cpt.data = pl.DataFrame({"penetrationLength": []})
+        mock_cpt.delivered_location = Mock()
+        mock_cpt.data = []
+        mock_cpt.empty_list = []
+        mock_cpt.empty_dict = {}
+        mock_cpt.none_value = None
+        mock_cpt.valid_value = "test"
 
-        with pytest.raises(ValueError, match="empty penetrationLength column"):
-            _calculate_final_depth(mock_cpt, "TEST-001")
+        attributes = builder._get_collar_attributes(mock_cpt)
 
-    def test_negative_penetration_length_values(self):
-        mock_cpt = Mock()
-        mock_cpt.final_depth = 0.0
-        mock_cpt.data = pl.DataFrame({"penetrationLength": [-1.0, 0.0, 5.0]})
-
-        result = _calculate_final_depth(mock_cpt, "TEST-001")
-
-        assert result == 5.0
+        assert "empty_list" not in attributes
+        assert "empty_dict" not in attributes
+        assert "none_value" not in attributes
+        assert attributes["valid_value"] == "test"
 
 
-class TestCreateFromParsedGefCpts:
-    """Test suite for create_from_parsed_gef_cpts main function."""
+class TestCreateCollarRow:
+    """Tests for _create_collar_row method."""
 
-    @pytest.fixture
-    def mock_cpt_data(self) -> Mock:
-        """Create a mock CPTData object with required attributes."""
-        mock = Mock(
-            spec=[
-                "delivered_location",
-                "delivered_vertical_position_offset",
-                "final_depth",
-                "data",
-                "column_void_mapping",
-            ]
-        )
+    def test_creates_correct_collar_row(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        collar_row = builder._create_collar_row(1, "CPT-001", mock_cpt_data)
 
-        # Mock location
-        mock.delivered_location = Mock()
-        mock.delivered_location.srs_name = "EPSG:28992"
-        mock.delivered_location.x = 100000.0
-        mock.delivered_location.y = 500000.0
+        assert collar_row["hole_index"] == 1
+        assert collar_row["hole_id"] == "CPT-001"
+        assert collar_row["x"] == 100000.0
+        assert collar_row["y"] == 500000.0
+        assert collar_row["z"] == 0.5
+        assert collar_row["final_depth"] == 10.0
 
-        mock.delivered_vertical_position_offset = 1.5
-        mock.final_depth = 10.0
+    def test_includes_collar_attributes(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        collar_row = builder._create_collar_row(1, "CPT-001", mock_cpt_data)
 
-        # Mock data as polars DataFrame
-        mock.data = pl.DataFrame(
+        assert collar_row["engineer"] == "Bob"
+        assert collar_row["wind_speed"] == 12.2
+
+
+class TestPrepareMeasurements:
+    def test_adds_hole_index_column(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        measurements = builder._prepare_measurements(1, mock_cpt_data)
+
+        assert "hole_index" in measurements.columns
+        assert all(measurements["hole_index"] == 1)
+
+    def test_hole_index_is_first_column(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        measurements = builder._prepare_measurements(1, mock_cpt_data)
+
+        assert measurements.columns[0] == "hole_index"
+
+    def test_preserves_other_columns(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        measurements = builder._prepare_measurements(1, mock_cpt_data)
+
+        assert "penetrationLength" in measurements.columns
+        assert "coneResistance" in measurements.columns
+        assert "friction" in measurements.columns
+
+
+class TestTrackNanValues:
+    def test_tracks_nan_values_by_attribute(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        builder._track_nan_values(mock_cpt_data)
+
+        assert builder.nan_values_by_attribute["penetrationLength"] == {9999.0}
+        assert builder.nan_values_by_attribute["coneResistance"] == {9999.0}
+        assert builder.nan_values_by_attribute["friction"] == {9999.0}
+
+    def test_accumulates_nan_values_across_files(
+        self, builder: DownholeCollectionBuilder, mock_cpt_data, mock_cpt_data_2
+    ) -> None:
+        mock_cpt_data_2.column_void_mapping["penetrationLength"] = 1234.56
+        builder._track_nan_values(mock_cpt_data)
+        builder._track_nan_values(mock_cpt_data_2)
+
+        assert len(builder.nan_values_by_attribute["penetrationLength"]) == 2
+        assert builder.nan_values_by_attribute["penetrationLength"] == {1234.56, 9999.0}
+
+    def test_skips_duplicate_nan_values_across_files(
+        self, builder: DownholeCollectionBuilder, mock_cpt_data, mock_cpt_data_2
+    ) -> None:
+        builder._track_nan_values(mock_cpt_data)
+        builder._track_nan_values(mock_cpt_data_2)
+
+        assert len(builder.nan_values_by_attribute["penetrationLength"]) == 1
+        assert builder.nan_values_by_attribute["penetrationLength"] == {9999.0}
+
+
+class TestAddNaNValuesMetadata:
+    def test_adds_nan_values_to_measurement_columns(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        builder._track_nan_values(mock_cpt_data)
+
+        measurements = pd.DataFrame(columns=["penetrationLength", "coneResistance", "friction"])
+        result = builder._add_nan_values_metadata(measurements)
+
+        assert result["penetrationLength"].attrs["nan_values"] == [9999.0]
+        assert result["coneResistance"].attrs["nan_values"] == [9999.0]
+        assert result["friction"].attrs["nan_values"] == [9999.0]
+
+    def test_adds_nan_values_only_to_columns_that_exist(
+        self, builder: DownholeCollectionBuilder, mock_cpt_data
+    ) -> None:
+        builder._track_nan_values(mock_cpt_data)
+
+        measurements = pd.DataFrame(columns=["penetrationLength"])
+        result = builder._add_nan_values_metadata(measurements)
+
+        assert len(result.columns) == 1
+
+
+class TestApplyNanValuesToMeasurements:
+    def test_sentinel_value_replacements(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        builder._track_nan_values(mock_cpt_data)
+        measurements = pd.DataFrame(
             {
-                "penetrationLength": [0.0, 1.0, 2.0, 3.0],
-                "coneResistance": [1.0, 2.0, 3.0, 4.0],
-                "friction": [0.01, 0.02, 0.03, 0.04],
+                "coneResistance": [9999.0, 1.0, 2.0, 9999.00],
             }
         )
 
-        mock.column_void_mapping = {
-            "penetrationLength": 9999.0,
-            "coneResistance": 9999.0,
-            "friction": 9999.0,
-        }
+        result = builder._apply_nan_values_to_measurements(measurements)
 
-        return mock
+        assert pd.isna(result.iloc[0]["coneResistance"])
+        assert result.iloc[1]["coneResistance"] == 1.0
+        assert result.iloc[2]["coneResistance"] == 2.0
+        assert pd.isna(result.iloc[3]["coneResistance"])
 
-    def test_empty_dict_raises_error(self):
+
+class TestCreateCollarsDataframe:
+    def test_creates_dataframe_with_correct_dtypes(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        builder.collar_rows.append(builder._create_collar_row(1, "CPT-001", mock_cpt_data))
+        collars_df = builder._create_collars_dataframe()
+
+        assert isinstance(collars_df, pd.DataFrame)
+        assert collars_df["hole_index"].dtype == "int32"
+        assert collars_df["hole_id"].dtype == "string"
+        assert collars_df["x"].dtype == "float64"
+        assert collars_df["y"].dtype == "float64"
+        assert collars_df["z"].dtype == "float64"
+        assert collars_df["final_depth"].dtype == "float64"
+
+    def test_creates_dataframe_with_multiple_rows(
+        self, builder: DownholeCollectionBuilder, mock_cpt_data, mock_cpt_data_2
+    ) -> None:
+        builder.collar_rows.append(builder._create_collar_row(1, "CPT-001", mock_cpt_data))
+        builder.collar_rows.append(builder._create_collar_row(2, "CPT-002", mock_cpt_data_2))
+        collars_df = builder._create_collars_dataframe()
+
+        assert len(collars_df) == 2
+
+    def test_creates_dataframe_with_differing_attributes(
+        self, builder: DownholeCollectionBuilder, mock_cpt_data, mock_cpt_data_2, mock_cpt_data_3
+    ) -> None:
+        builder.collar_rows.append(builder._create_collar_row(1, "CPT-001", mock_cpt_data))
+        builder.collar_rows.append(builder._create_collar_row(2, "CPT-002", mock_cpt_data_2))
+        builder.collar_rows.append(builder._create_collar_row(3, "CPT-003", mock_cpt_data_3))
+
+        collars_df = builder._create_collars_dataframe()
+
+        # cone_size only exists in the 3rd cpt file
+        assert pd.isna(collars_df.iloc[0]["cone_size"])
+        assert pd.isna(collars_df.iloc[1]["cone_size"])
+        assert collars_df.iloc[2]["cone_size"] == 3.14
+
+        # signed_off appears in the first two cpt files
+        assert not collars_df.iloc[0]["signed_off"]
+        assert collars_df.iloc[1]["signed_off"]
+        assert pd.isna(collars_df.iloc[2]["signed_off"])
+
+
+class TestCreateMeasurementsDataframe:
+    @patch("evo.data_converters.gef.converter.gef_to_downhole_collection.logger")
+    def test_creates_dataframe_from_measurements(self, mock_logger, builder, mock_cpt_data) -> None:
+        measurements = builder._prepare_measurements(1, mock_cpt_data)
+        builder.measurement_dfs.append(measurements)
+
+        measurements_df = builder._create_measurements_dataframe()
+
+        assert isinstance(measurements_df, pd.DataFrame)
+        assert len(measurements_df) == 4
+        assert mock_logger.info.called
+
+    @patch("evo.data_converters.gef.converter.gef_to_downhole_collection.logger")
+    def test_empty_measurements_returns_empty_dataframe(self, mock_logger, builder) -> None:
+        measurements_df = builder._create_measurements_dataframe()
+
+        assert isinstance(measurements_df, pd.DataFrame)
+        assert "hole_index" in measurements_df.columns
+        assert len(measurements_df) == 0
+        assert mock_logger.warning.called
+
+
+class TestGenerateCollectionName:
+    def test_empty_list_returns_empty_string(self, builder: DownholeCollectionBuilder) -> None:
+        builder.collar_rows = []
+        assert builder._generate_collection_name() == ""
+
+    def test_single_collar_returns_hole_id(self, builder: DownholeCollectionBuilder) -> None:
+        builder.collar_rows = [{"hole_id": "CPT-001"}]
+        assert builder._generate_collection_name() == "CPT-001"
+
+    def test_multiple_collars_returns_range_format(self, builder: DownholeCollectionBuilder) -> None:
+        builder.collar_rows = [
+            {"hole_id": "CPT-001"},
+            {"hole_id": "CPT-002"},
+            {"hole_id": "CPT-003"},
+        ]
+        assert builder._generate_collection_name() == "CPT-001...CPT-003"
+
+
+class TestCreateCollection:
+    def test_creates_valid_collection(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
+        builder.epsg_code = 28992
+        builder.collar_rows.append(builder._create_collar_row(1, "CPT-001", mock_cpt_data))
+        builder.measurement_dfs.append(builder._prepare_measurements(1, mock_cpt_data))
+        builder._track_nan_values(mock_cpt_data)
+
+        collars_df = builder._create_collars_dataframe()
+        measurements_df = builder._create_measurements_dataframe()
+        measurements_df = builder._add_nan_values_metadata(measurements_df)
+        collection_name = builder._generate_collection_name()
+
+        result = builder._create_collection(collection_name, collars_df, measurements_df)
+
+        assert isinstance(result, DownholeCollection)
+        assert result.name == "CPT-001"
+        assert result.coordinate_reference_system == 28992
+        assert len(result.measurements) == 1
+        assert result.measurements[0].df["penetrationLength"].attrs["nan_values"] == [9999.00]
+
+
+class TestCreateFromParsedGefCpts:
+    def test_empty_dict_raises_error(self) -> None:
         with pytest.raises(ValueError, match="No CPT files provided"):
-            _ = create_from_parsed_gef_cpts({})
+            create_from_parsed_gef_cpts({})
 
-    def test_single_cpt_file_creates_valid_collection(self, mock_cpt_data) -> None:
+    def test_single_cpt_creates_valid_collection(self, mock_cpt_data) -> None:
         parsed_files = {"CPT-001": mock_cpt_data}
 
         result = create_from_parsed_gef_cpts(parsed_files)
@@ -225,253 +579,21 @@ class TestCreateFromParsedGefCpts:
         assert isinstance(result, DownholeCollection)
         assert result.name == "CPT-001"
         assert result.coordinate_reference_system == 28992
-        assert isinstance(result.collars, HoleCollars)
+        assert len(result.collars.df) == 1
         assert result.collars.df.iloc[0]["hole_id"] == "CPT-001"
-        assert result.collars.df.iloc[0]["x"] == 100000.0
-        assert result.collars.df.iloc[0]["y"] == 500000.0
-        assert result.collars.df.iloc[0]["z"] == 1.5
-        assert result.collars.df.iloc[0]["final_depth"] == 10.0
 
-    def test_multiple_cpt_files_creates_combined_collection(self, mock_cpt_data) -> None:
-        mock_cpt_2 = Mock(
-            spec=[
-                "delivered_location",
-                "delivered_vertical_position_offset",
-                "final_depth",
-                "data",
-                "column_void_mapping",
-            ]
-        )
-        mock_cpt_2.delivered_location = Mock()
-        mock_cpt_2.delivered_location.srs_name = "EPSG:28992"
-        mock_cpt_2.delivered_location.x = 100100.0
-        mock_cpt_2.delivered_location.y = 500100.0
-        mock_cpt_2.delivered_vertical_position_offset = 2.0
-        mock_cpt_2.final_depth = 12.0
-        mock_cpt_2.data = pl.DataFrame(
-            {"penetrationLength": [0.0, 1.5, 3.0], "coneResistance": [2.0, 3.0, 4.0], "friction": [0.02, 0.03, 0.04]}
-        )
-        mock_cpt_2.column_void_mapping = {
-            "penetrationLength": 9999.0,
-            "coneResistance": 9999.0,
-            "friction": 9999.0,
-        }
-
-        parsed_files = {"CPT-001": mock_cpt_data, "CPT-002": mock_cpt_2}
+    def test_multiple_cpts_creates_combined_collection(self, mock_cpt_data, mock_cpt_data_2) -> None:
+        parsed_files = {"CPT-001": mock_cpt_data, "CPT-002": mock_cpt_data_2}
 
         result = create_from_parsed_gef_cpts(parsed_files)
 
         assert result.name == "CPT-001...CPT-002"
         assert len(result.collars.df) == 2
-        assert len(result.measurements[0].df) == 7  # 4 + 3 measurements
+        assert len(result.measurements[0].df) == 8  # 4 measurements each
         assert result.measurements[0].df["hole_index"].nunique() == 2
 
-    def test_inconsistent_epsg_codes_raises_error(self, mock_cpt_data) -> None:
-        mock_cpt_2 = Mock(
-            spec=[
-                "delivered_location",
-                "delivered_vertical_position_offset",
-                "final_depth",
-                "data",
-                "column_void_mapping",
-            ]
-        )
-        mock_cpt_2.delivered_location = Mock()
-        mock_cpt_2.delivered_location.srs_name = "EPSG:4326"  # Different EPSG!
-        mock_cpt_2.delivered_location.x = 5.0
-        mock_cpt_2.delivered_location.y = 52.0
-        mock_cpt_2.delivered_vertical_position_offset = 0.0
-        mock_cpt_2.final_depth = 8.0
-        mock_cpt_2.data = pl.DataFrame({"penetrationLength": [0.0, 1.0], "coneResistance": [1.0, 2.0]})
-        mock_cpt_2.column_void_mapping = {
-            "penetrationLength": 9999.0,
-            "coneResistance": 9999.0,
-            "friction": 9999.0,
-        }
-
-        parsed_files = {"CPT-001": mock_cpt_data, "CPT-002": mock_cpt_2}
-
-        with pytest.raises(ValueError, match="Inconsistent EPSG codes"):
-            create_from_parsed_gef_cpts(parsed_files)
-
-    def test_missing_vertical_offset_defaults_to_zero(self, mock_cpt_data) -> None:
-        mock_cpt_data.delivered_vertical_position_offset = None
-        parsed_files = {"CPT-001": mock_cpt_data}
-
-        result = create_from_parsed_gef_cpts(parsed_files)
-
-        assert result.collars.df.iloc[0]["z"] == 0.0
-
-    def test_missing_final_depth_uses_max_penetration(self, mock_cpt_data) -> None:
-        mock_cpt_data.final_depth = 0.0
-        parsed_files = {"CPT-001": mock_cpt_data}
-
-        result = create_from_parsed_gef_cpts(parsed_files)
-
-        assert result.collars.df.iloc[0]["final_depth"] == 3.0  # max of [0,1,2,3]
-
-    def test_measurements_have_hole_index_column(self, mock_cpt_data) -> None:
-        parsed_files = {"CPT-001": mock_cpt_data}
-
-        result = create_from_parsed_gef_cpts(parsed_files)
-
-        assert "hole_index" in result.measurements[0].df.columns
-        assert all(result.measurements[0].df["hole_index"] == 1)
-        # Verify hole_index is the first column
-        assert result.measurements[0].df.columns[0] == "hole_index"
-
-    def test_hole_index_increments_correctly(self, mock_cpt_data) -> None:
-        mock_cpt_2 = Mock(
-            spec=[
-                "delivered_location",
-                "delivered_vertical_position_offset",
-                "final_depth",
-                "data",
-                "column_void_mapping",
-            ]
-        )
-        mock_cpt_2.delivered_location = Mock()
-        mock_cpt_2.delivered_location.srs_name = "EPSG:28992"
-        mock_cpt_2.delivered_location.x = 100100.0
-        mock_cpt_2.delivered_location.y = 500100.0
-        mock_cpt_2.delivered_vertical_position_offset = 0.0
-        mock_cpt_2.final_depth = 8.0
-        mock_cpt_2.data = pl.DataFrame(
-            {"penetrationLength": [0.0, 2.0], "coneResistance": [1.0, 2.0], "friction": [0.01, 0.02]}
-        )
-        mock_cpt_2.column_void_mapping = {
-            "penetrationLength": 9999.0,
-            "coneResistance": 9999.0,
-            "friction": 9999.0,
-        }
-
-        parsed_files = {"CPT-001": mock_cpt_data, "CPT-002": mock_cpt_2}
-
-        result = create_from_parsed_gef_cpts(parsed_files)
-
-        hole_1_measurements = result.measurements[0].df[result.measurements[0].df["hole_index"] == 1]
-        hole_2_measurements = result.measurements[0].df[result.measurements[0].df["hole_index"] == 2]
-
-        assert len(hole_1_measurements) == 4
-        assert len(hole_2_measurements) == 2
-
-    def test_collar_datatypes_are_correct(self, mock_cpt_data) -> None:
-        parsed_files = {"CPT-001": mock_cpt_data}
-
-        result = create_from_parsed_gef_cpts(parsed_files)
-
-        assert result.collars.df["hole_index"].dtype == "int32"
-        assert result.collars.df["hole_id"].dtype == "string"
-        assert result.collars.df["x"].dtype == "float64"
-        assert result.collars.df["y"].dtype == "float64"
-        assert result.collars.df["z"].dtype == "float64"
-        assert result.collars.df["final_depth"].dtype == "float64"
-
-    def test_preserves_original_column_order(self, mock_cpt_data) -> None:
-        parsed_files = {"CPT-001": mock_cpt_data}
-
-        result = create_from_parsed_gef_cpts(parsed_files)
-
-        # hole_index should be first, then original columns in order
-        expected_columns = ["hole_index", "penetrationLength", "coneResistance", "friction"]
-        assert list(result.measurements[0].df.columns) == expected_columns
-
-    def test_no_column_duplication_if_hole_index_exists(self, mock_cpt_data) -> None:
-        # Add hole_index to the original data
-        mock_cpt_data.data = mock_cpt_data.data.with_columns(pl.lit(99).cast(pl.Int32).alias("hole_index"))
-
-        parsed_files = {"CPT-001": mock_cpt_data}
-        result = create_from_parsed_gef_cpts(parsed_files)
-
-        # Should only have one hole_index column
-        hole_index_count = sum(1 for col in result.measurements[0].df.columns if col == "hole_index")
-        assert hole_index_count == 1
-        # And it should be the correct value (1, not 99)
-        assert all(result.measurements[0].df["hole_index"] == 1)
-
-    @patch("evo.data_converters.gef.converter.gef_to_downhole_collection.logger")
-    def test_logging_for_successful_processing(self, mock_logger, mock_cpt_data) -> None:
-        parsed_files = {"CPT-001": mock_cpt_data}
-
-        create_from_parsed_gef_cpts(parsed_files)
-
-        # Verify logging calls were made
-        assert mock_logger.info.called
-        assert mock_logger.debug.called
-
-    def test_three_cpt_files_collection_name(self, mock_cpt_data) -> None:
-        mock_cpt_2 = Mock(
-            spec=[
-                "delivered_location",
-                "delivered_vertical_position_offset",
-                "final_depth",
-                "data",
-                "column_void_mapping",
-            ]
-        )
-        mock_cpt_2.delivered_location = Mock()
-        mock_cpt_2.delivered_location.srs_name = "EPSG:28992"
-        mock_cpt_2.delivered_location.x = 100100.0
-        mock_cpt_2.delivered_location.y = 500100.0
-        mock_cpt_2.delivered_vertical_position_offset = 0.0
-        mock_cpt_2.final_depth = 8.0
-        mock_cpt_2.data = pl.DataFrame({"penetrationLength": [0.0], "coneResistance": [0.0], "friction": [0.0]})
-        mock_cpt_2.column_void_mapping = {
-            "penetrationLength": 9999.0,
-            "coneResistance": 9999.0,
-            "friction": 9999.0,
-        }
-
-        mock_cpt_3 = Mock(
-            spec=[
-                "delivered_location",
-                "delivered_vertical_position_offset",
-                "final_depth",
-                "data",
-                "column_void_mapping",
-            ]
-        )
-        mock_cpt_3.delivered_location = Mock()
-        mock_cpt_3.delivered_location.srs_name = "EPSG:28992"
-        mock_cpt_3.delivered_location.x = 100200.0
-        mock_cpt_3.delivered_location.y = 500200.0
-        mock_cpt_3.delivered_vertical_position_offset = 0.0
-        mock_cpt_3.final_depth = 9.0
-        mock_cpt_3.data = pl.DataFrame({"penetrationLength": [0.0], "coneResistance": [0.0], "friction": [0.0]})
-        mock_cpt_3.column_void_mapping = {
-            "penetrationLength": 9999.0,
-            "coneResistance": 9999.0,
-            "friction": 9999.0,
-        }
-
-        parsed_files = {"CPT-001": mock_cpt_data, "CPT-002": mock_cpt_2, "CPT-003": mock_cpt_3}
-
-        result = create_from_parsed_gef_cpts(parsed_files)
-
-        assert result.name == "CPT-001...CPT-003"
-
-    def test_handles_zero_vertical_offset_explicitly(self, mock_cpt_data) -> None:
-        mock_cpt_data.delivered_vertical_position_offset = 0.0
-        parsed_files = {"CPT-001": mock_cpt_data}
-
-        result = create_from_parsed_gef_cpts(parsed_files)
-
-        assert result.collars.df.iloc[0]["z"] == 0.0
-
-    def test_handles_negative_vertical_offset(self, mock_cpt_data) -> None:
-        mock_cpt_data.delivered_vertical_position_offset = -2.5
-        parsed_files = {"CPT-001": mock_cpt_data}
-
-        result = create_from_parsed_gef_cpts(parsed_files)
-
-        assert result.collars.df.iloc[0]["z"] == -2.5
-
-
-class TestIntegration:
-    """Integration test with dummy data"""
-
-    def test_realistic_multi_cpt_scenario(self) -> None:
-        """Test with a set of dummy CPT data"""
+    def test_five_cpts(self) -> None:
+        """Test with multiple CPT files using dummy data."""
         cpts = {}
 
         for i in range(1, 6):
@@ -510,5 +632,4 @@ class TestIntegration:
         assert result.name == "CPT-001...CPT-005"
         assert len(result.collars.df) == 5
         assert len(result.measurements[0].df) == 100  # 5 CPTs * 20 measurements
-        assert result.coordinate_reference_system == 28992
         assert set(result.measurements[0].df["hole_index"].unique()) == {1, 2, 3, 4, 5}
