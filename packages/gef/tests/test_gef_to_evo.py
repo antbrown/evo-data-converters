@@ -97,8 +97,7 @@ class TestConvertGef:
         mock_publish.assert_called_once()
 
         mock_create_collection.assert_called_once()
-        call_args = mock_create_collection.call_args
-        assert call_args.kwargs["name"] == collection_name
+        assert mock_create_collection.call_args.kwargs["name"] == collection_name
 
         # Check tags were added
         expected_tags = {
