@@ -610,3 +610,14 @@ class TestCreateFromParsedGefCpts:
         assert len(result.collars.df) == 5
         assert len(result.measurements[0].df) == 100  # 5 CPTs * 20 measurements
         assert set(result.measurements[0].df["hole_index"].unique()) == {1, 2, 3, 4, 5}
+
+    def test_multiple_cpts_custom_name(self, mock_cpt_data, mock_cpt_data_2) -> None:
+        """Test with multiple CPT, use custom name."""
+        parsed_files = {"CPT-001": mock_cpt_data, "CPT-002": mock_cpt_data_2}
+
+        result = create_from_parsed_gef_cpts(parsed_files, name="Custom name")
+
+        assert result.name == "Custom name"
+        assert len(result.collars.df) == 2
+        assert len(result.measurements[0].df) == 8  # 4 measurements each
+        assert result.measurements[0].df["hole_index"].nunique() == 2
