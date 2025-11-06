@@ -78,6 +78,8 @@ class TestConvertGef:
         mock_object_metadata,
     ):
         """Test conversion with workspace metadata and hub_url - should publish."""
+        collection_name = "Test Collection"
+
         mock_create_clients.return_value = (Mock(), Mock())
         mock_converter.return_value = Mock(
             spec=DownholeCollectionToGeoscienceObject, convert=Mock(return_value=mock_downhole_collection_go)
@@ -86,11 +88,17 @@ class TestConvertGef:
         mock_create_collection.return_value = mock_downhole_collection
         mock_publish.return_value = mock_object_metadata
 
-        result = convert_gef(filepaths=sample_filepaths, evo_workspace_metadata=workspace_metadata)
+        result = convert_gef(
+            name=collection_name, filepaths=sample_filepaths, evo_workspace_metadata=workspace_metadata
+        )
 
         assert result == mock_object_metadata
         assert isinstance(result, ObjectMetadata)
         mock_publish.assert_called_once()
+
+        mock_create_collection.assert_called_once()
+        call_args = mock_create_collection.call_args
+        assert call_args.kwargs["name"] == collection_name
 
         # Check tags were added
         expected_tags = {
