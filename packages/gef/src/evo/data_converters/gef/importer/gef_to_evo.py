@@ -37,6 +37,7 @@ def convert_gef(
     filepaths: list[str | Path],
     evo_workspace_metadata: EvoWorkspaceMetadata | None = None,
     service_manager_widget: "ServiceManagerWidget | None" = None,
+    name: str | None = None,
     tags: dict[str, str] | None = None,
     upload_path: str = "",
     overwrite_existing_objects: bool = False,
@@ -71,7 +72,7 @@ def convert_gef(
         publish_object = False
 
     gef_cpt_data = parse_gef_files(filepaths)
-    downhole_collection = create_from_parsed_gef_cpts(gef_cpt_data)
+    downhole_collection = create_from_parsed_gef_cpts(gef_cpt_data, name=name)
     converter = DownholeCollectionToGeoscienceObject(dhc=downhole_collection, data_client=data_client)
     geoscience_object = converter.convert()
 

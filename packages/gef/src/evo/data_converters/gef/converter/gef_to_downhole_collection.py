@@ -53,6 +53,7 @@ class DownholeCollectionBuilder:
     def __init__(self) -> None:
         self.epsg_code: int | str | None = None
         self.collar_rows: list[dict[str, typing.Any]] = []
+        self.collection_name: str | None = None
         self.measurement_dfs: list[pl.DataFrame] = []
         self.nan_values_by_attribute: dict[str, list[typing.Any]] = defaultdict(list)
 
@@ -88,9 +89,12 @@ class DownholeCollectionBuilder:
         collars_df = self._create_collars_dataframe()
         measurements_df = self._create_measurements_dataframe()
         measurements_df = self._apply_nan_values_to_measurements(measurements_df)
-        collection_name = self._generate_collection_name()
+        collection_name = self.collection_name or self._generate_collection_name()
 
         return self._create_collection(collection_name, collars_df, measurements_df)
+
+    def _set_name(self, name):
+        self.collection_name = name
 
     def _extract_epsg_code(self, cpt_data: CPTData, hole_id: str) -> int | str:
         """Extract EPSG code from CPTData object.
@@ -315,12 +319,17 @@ class DownholeCollectionBuilder:
         )
 
 
-def create_from_parsed_gef_cpts(parsed_cpt_files: dict[str, CPTData]) -> DownholeCollection:
-    """Create a DownholeCollection from parsed GEF CPT files.
+def create_from_parsed_gef_cpts(
+    parsed_cpt_files: dict[str, CPTData],
+    name: str | None = None,
+) -> DownholeCollection:
+    """
+    Create a DownholeCollection from parsed GEF CPT files.
 
     :param parsed_cpt_files: Dictionary mapping hole IDs to CPTData objects
+    :param name: (Optional) custom name, or generated from GEF IDs
 
-    :return: DownholeCollection containing collar and measurement data
+    :return DownholeCollection containing collar and measurement data
 
     :raises ValueError: If no CPT files provided, EPSG codes are inconsistent,
                         or required data is missing/malformed
@@ -329,6 +338,9 @@ def create_from_parsed_gef_cpts(parsed_cpt_files: dict[str, CPTData]) -> Downhol
         raise ValueError("No CPT files provided - parsed_cpt_files dictionary is empty")
 
     builder = DownholeCollectionBuilder()
+
+    if name:
+        builder._set_name(name)
 
     for hole_index, (hole_id, cpt_data) in enumerate(parsed_cpt_files.items(), start=1):
         builder.process_cpt_file(hole_index, hole_id, cpt_data)
