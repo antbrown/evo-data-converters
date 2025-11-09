@@ -400,9 +400,9 @@ class TestTrackNanValues:
     def test_tracks_nan_values_by_attribute(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
         builder._track_nan_values(mock_cpt_data)
 
-        assert builder.nan_values_by_attribute["penetrationLength"] == {9999.0}
-        assert builder.nan_values_by_attribute["coneResistance"] == {9999.0}
-        assert builder.nan_values_by_attribute["friction"] == {9999.0}
+        assert builder.nan_values_by_attribute["penetrationLength"] == [9999.0]
+        assert builder.nan_values_by_attribute["coneResistance"] == [9999.0]
+        assert builder.nan_values_by_attribute["friction"] == [9999.0]
 
     def test_accumulates_nan_values_across_files(
         self, builder: DownholeCollectionBuilder, mock_cpt_data, mock_cpt_data_2
@@ -412,7 +412,7 @@ class TestTrackNanValues:
         builder._track_nan_values(mock_cpt_data_2)
 
         assert len(builder.nan_values_by_attribute["penetrationLength"]) == 2
-        assert builder.nan_values_by_attribute["penetrationLength"] == {1234.56, 9999.0}
+        assert builder.nan_values_by_attribute["penetrationLength"] == [9999.0, 1234.56]
 
     def test_skips_duplicate_nan_values_across_files(
         self, builder: DownholeCollectionBuilder, mock_cpt_data, mock_cpt_data_2
@@ -421,29 +421,7 @@ class TestTrackNanValues:
         builder._track_nan_values(mock_cpt_data_2)
 
         assert len(builder.nan_values_by_attribute["penetrationLength"]) == 1
-        assert builder.nan_values_by_attribute["penetrationLength"] == {9999.0}
-
-
-class TestAddNaNValuesMetadata:
-    def test_adds_nan_values_to_measurement_columns(self, builder: DownholeCollectionBuilder, mock_cpt_data) -> None:
-        builder._track_nan_values(mock_cpt_data)
-
-        measurements = pd.DataFrame(columns=["penetrationLength", "coneResistance", "friction"])
-        result = builder._add_nan_values_metadata(measurements)
-
-        assert result["penetrationLength"].attrs["nan_values"] == [9999.0]
-        assert result["coneResistance"].attrs["nan_values"] == [9999.0]
-        assert result["friction"].attrs["nan_values"] == [9999.0]
-
-    def test_adds_nan_values_only_to_columns_that_exist(
-        self, builder: DownholeCollectionBuilder, mock_cpt_data
-    ) -> None:
-        builder._track_nan_values(mock_cpt_data)
-
-        measurements = pd.DataFrame(columns=["penetrationLength"])
-        result = builder._add_nan_values_metadata(measurements)
-
-        assert len(result.columns) == 1
+        assert builder.nan_values_by_attribute["penetrationLength"] == [9999.0]
 
 
 class TestApplyNanValuesToMeasurements:
@@ -554,7 +532,6 @@ class TestCreateCollection:
 
         collars_df = builder._create_collars_dataframe()
         measurements_df = builder._create_measurements_dataframe()
-        measurements_df = builder._add_nan_values_metadata(measurements_df)
         collection_name = builder._generate_collection_name()
 
         result = builder._create_collection(collection_name, collars_df, measurements_df)
@@ -563,7 +540,7 @@ class TestCreateCollection:
         assert result.name == "CPT-001"
         assert result.coordinate_reference_system == 28992
         assert len(result.measurements) == 1
-        assert result.measurements[0].df["penetrationLength"].attrs["nan_values"] == [9999.00]
+        assert result.measurements[0].nan_values_by_column["penetrationLength"] == [9999.00]
 
 
 class TestCreateFromParsedGefCpts:

@@ -54,7 +54,7 @@ class DownholeCollectionBuilder:
         self.epsg_code: int | str | None = None
         self.collar_rows: list[dict[str, typing.Any]] = []
         self.measurement_dfs: list[pl.DataFrame] = []
-        self.nan_values_by_attribute: dict[str, set[typing.Any]] = defaultdict(set)
+        self.nan_values_by_attribute: dict[str, list[typing.Any]] = defaultdict(list)
 
     def process_cpt_file(self, hole_index: int, hole_id: str, cpt_data: CPTData) -> None:
         """
@@ -92,7 +92,6 @@ class DownholeCollectionBuilder:
 
         collars_df = self._create_collars_dataframe()
         measurements_df = self._create_measurements_dataframe()
-        measurements_df = self._add_nan_values_metadata(measurements_df)
         measurements_df = self._apply_nan_values_to_measurements(measurements_df)
         collection_name = self._generate_collection_name()
 
@@ -276,19 +275,8 @@ class DownholeCollectionBuilder:
             cpt_data: CPT data object
         """
         for attribute_name, value in cpt_data.column_void_mapping.items():
-            self.nan_values_by_attribute[attribute_name].add(value)
-
-    def _add_nan_values_metadata(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Add NaN values to column metadata.
-
-        Args:
-            df: The dataframe containing all columns and data
-        """
-        for attribute_name, values_set in self.nan_values_by_attribute.items():
-            if attribute_name in df.columns and values_set:
-                df[attribute_name].attrs["nan_values"] = list(values_set)
-        return df
+            if value not in self.nan_values_by_attribute[attribute_name]:
+                self.nan_values_by_attribute[attribute_name].append(value)
 
     def _apply_nan_values_to_measurements(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -357,7 +345,9 @@ class DownholeCollectionBuilder:
             Intermediary DownholeCollection object
         """
         column_mapping = ColumnMapping(DEPTH_COLUMNS=["penetrationLength"])
-        distance_measurements = MeasurementTableFactory.create(df=measurements_df, column_mapping=column_mapping)
+        distance_measurements = MeasurementTableFactory.create(
+            df=measurements_df, column_mapping=column_mapping, nan_values_by_column=self.nan_values_by_attribute
+        )
         collars = HoleCollars(df=collars_df)
 
         return DownholeCollection(
