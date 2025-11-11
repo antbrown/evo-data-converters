@@ -51,11 +51,12 @@ def convert_gef(
     - service_manager_widget was passed to this function.
 
     :param filepaths: List of Paths to the GEF files.
-    :param evo_workspace_metadata: Optional) Evo workspace metadata.
-    :param service_manager_widget: Optional) Service Manager Widget for use in jupyter notebooks.
-    :param tags: Optional) Dict of tags to add to the Geoscience Object.
-    :param upload_path: Optional) Path object will be published under.
-    :param overwrite_existing_objects: Optional) Whether existing objects will be overwritten with a new version.
+    :param evo_workspace_metadata: (Optional) Evo workspace metadata.
+    :param service_manager_widget: (Optional) Service Manager Widget for use in jupyter notebooks.
+    :param name (Optional) Name for DownholeCollection, auto-generated from hole IDs if not provided.
+    :param tags: (Optional) Dict of tags to add to the Geoscience Object.
+    :param upload_path: (Optional) Path object will be published under.
+    :param overwrite_existing_objects: (Optional) Whether existing objects will be overwritten with a new version.
 
     :return: Geoscience Object or ObjectMetadata if published.
 

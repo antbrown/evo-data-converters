@@ -93,7 +93,7 @@ class DownholeCollectionBuilder:
 
         return self._create_collection(collection_name, collars_df, measurements_df)
 
-    def _set_name(self, name):
+    def set_name(self, name: str) -> None:
         self.collection_name = name
 
     def _extract_epsg_code(self, cpt_data: CPTData, hole_id: str) -> int | str:
@@ -329,7 +329,7 @@ def create_from_parsed_gef_cpts(
     :param parsed_cpt_files: Dictionary mapping hole IDs to CPTData objects
     :param name: (Optional) custom name, or generated from GEF IDs
 
-    :return DownholeCollection containing collar and measurement data
+    :return: DownholeCollection containing collar and measurement data
 
     :raises ValueError: If no CPT files provided, EPSG codes are inconsistent,
                         or required data is missing/malformed
@@ -340,7 +340,7 @@ def create_from_parsed_gef_cpts(
     builder = DownholeCollectionBuilder()
 
     if name:
-        builder._set_name(name)
+        builder.set_name(name)
 
     for hole_index, (hole_id, cpt_data) in enumerate(parsed_cpt_files.items(), start=1):
         builder.process_cpt_file(hole_index, hole_id, cpt_data)
