@@ -10,9 +10,12 @@
 #  limitations under the License.
 
 from .gef_to_downhole_collection import create_from_parsed_gef_cpts
+from .cpt import CPTData, read_cpt
 from .parse_gef_files import parse_gef_files
 
 __all__ = [
     "create_from_parsed_gef_cpts",
+    "CPTData",
+    "read_cpt",
     "parse_gef_files",
 ]

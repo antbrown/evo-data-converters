@@ -13,9 +13,7 @@ from pathlib import Path
 
 import evo.logging
 
-from pygef.broxml.parse_cpt import read_cpt as read_cpt_xml
-from pygef import read_cpt
-from pygef.cpt import CPTData
+from .cpt import CPTData, read_cpt, read_cpt_xml
 
 logger = evo.logging.getLogger("data_converters")
 

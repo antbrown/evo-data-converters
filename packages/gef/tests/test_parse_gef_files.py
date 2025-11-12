@@ -12,8 +12,7 @@
 import pytest
 import polars as pl
 from pathlib import Path
-from pygef.cpt import CPTData
-from evo.data_converters.gef.converter.parse_gef_files import parse_gef_files
+from evo.data_converters.gef.converter import CPTData, parse_gef_files
 
 
 class TestParseGefFiles:
@@ -127,3 +126,11 @@ class TestParseGefFiles:
 
         for column in df.columns:
             assert cpt_data.data[column].round(4).equals(df[column].round(4), null_equal=True)
+
+    def test_parse_cpt_gef_files_with_gef_headers(self) -> None:
+        cpt_file = self.test_data_dir / "gef-cpt/cpt.gef"
+        result = parse_gef_files([cpt_file])
+        cpt_data = next(iter(result.values()))
+        assert cpt_data.gef_headers is not None
+        assert len(cpt_data.gef_headers["MEASUREMENTTEXT"]) == 21
+        assert cpt_data.gef_headers["MEASUREMENTTEXT"][0][1] == "S10-CFIIP.1721"

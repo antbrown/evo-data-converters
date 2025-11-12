@@ -15,7 +15,7 @@ from evo.data_converters.common.objects.downhole_collection import (
     HoleCollars,
     MeasurementTableFactory,
 )
-from pygef.cpt import CPTData
+from evo.data_converters.gef.converter.cpt import CPTData
 import pandas as pd
 import polars as pl
 import typing

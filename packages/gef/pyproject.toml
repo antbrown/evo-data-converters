@@ -2,7 +2,7 @@
 name = "evo-data-converters-gef"
 description = "Python data converters for GEF to Evo geoscience objects"
 version = "0.0.1"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license-files = ["LICENSE.md"]
 dynamic = ["readme"]
 authors = [
