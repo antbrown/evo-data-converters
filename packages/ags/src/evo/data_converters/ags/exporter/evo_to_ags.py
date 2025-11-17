@@ -20,16 +20,10 @@ from ags import AGSMetadata
 from python_ags4 import AGS4
 
 from evo_schemas import schema_lookup
-from evo_schemas.objects import (
-    LineSegments_V2_0_0,
-    LineSegments_V2_1_0,
-    Pointset_V1_1_0,
-    Pointset_V1_2_0,
-    TriangleMesh_V2_0_0,
-    TriangleMesh_V2_1_0,
-)
 
 import evo.logging
+from evo.data_converters.common.objects.downhole_collection import DownholeCollection, ColumnMapping, HoleCollars
+from evo.data_converters.common.objects.downhole_collection.tables import DistanceTable
 from evo.data_converters.common import (
     EvoObjectMetadata,
     EvoWorkspaceMetadata,
@@ -38,29 +32,44 @@ from evo.data_converters.common import (
 from evo.objects.client import ObjectAPIClient
 from evo.objects.data import ObjectSchema
 from evo.objects.utils.data import ObjectDataClient
-from pandas import Dataframe
+import pandas as pd
 
 if TYPE_CHECKING:
     from evo.notebooks import ServiceManagerWidget
 
 
-def _map_to_ags_groups():
-    pass
+def _downhole_to_ags_groups(dhc: DownholeCollection) -> dict[DataFrame]:
+    collars_df = dhc.collars.df
+    
+    for measurement in dhc.get_measurement_tables(filter=[DistanceTable]):
+        pass
 
-def _export_element(
-    object_metadata: EvoObjectMetadata,
+
+def _export_obj(
+    obj_meta: EvoObjectMetadata,
     service_client: ObjectAPIClient,
     data_client: ObjectDataClient,
-) -> tuple[Dataframe, ObjectSchema]:
-    pass
+) -> Dataframe:
+    evo_object = asyncio.run(service_client.download_object_by_id(obj_meta.object_id, obj_meta.version_id)).as_dict()
+    object_class = schema_lookup.get(str(ObjectSchema.from_id(evo_object["schema"])))
+
+    if not object_class:
+        raise UnsupportedObjectError(f"Unknown Geoscience Object schema '{schema}'")
+
+    evo_object = object_class.from_dict(evo_object)
+
+    match object_class:
+        case DownholeCollection():
+            return _downhole_to_ags_groups(evo_object)
+        case _:
+            raise AgsFileInvalidException(f"Cannot export {obj_type} to AGS")
 
 def export_ags(
     filepath: str,
     objects: list[EvoObjectMetadata],
-    ags_metadata: Optional[AGSMetadata] = None,
     evo_workspace_metadata: Optional[EvoWorkspaceMetadata] = None,
     service_manager_widget: Optional["ServiceManagerWidget"] = None,
-) -> None:
+) -> [Dataframe]:
 
     service_client, data_client = create_evo_object_service_and_data_client(
         evo_workspace_metadata, service_manager_widget
@@ -68,5 +77,6 @@ def export_ags(
 
     nest_asyncio.apply()
 
-    ags_metadata = dataclasses.replace(ags_metadata) if ags_metadata else AGSMetadata()
-    
+    objs = [_export_obj(obj, service_client, data_client) for obj in objects]
+
+    return dataframe_to_AGS4(objs, {}, filepath)
