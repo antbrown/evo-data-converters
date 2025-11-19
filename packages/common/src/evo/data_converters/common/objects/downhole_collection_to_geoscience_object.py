@@ -128,15 +128,8 @@ class DownholeCollectionToGeoscienceObject:
         )
 
     def create_dhc_location(self) -> DownholeCollection_Location:
-        """
-        Create a downhole collection location object containing all location-related data.
-
-        This includes coordinates, distances, hole chunks, hole IDs, paths, and attributes
-        from the collar information.
-
-        :return: Complete location object with spatial and organisational data
-        """
-        dt = self.get_first_distance_measurement_table()
+        """Create a downhole collection location object"""
+        measurement_table = self.get_first_distance_measurement_table()
 
         return DownholeCollection_Location(
             # Attributes
@@ -218,15 +211,9 @@ class DownholeCollectionToGeoscienceObject:
 
         return CategoryData(table=lookup_table_go, values=integer_array_go)
 
-    def create_dhc_location_path(self, dt: DistanceMeasurementTable) -> DownholeDirectionVector:
-        """
-        Create downhole direction vectors defining the trajectory of each hole.
-
-        Currently assumes all holes are vertical with azimuth=0° and dip=90°.
-
-        :return: DownholeDirectionVector object with distance, azimuth, and dip values
-        """
-        path_table = self.path_table(dt)
+    def create_dhc_location_path(self) -> DownholeDirectionVector:
+        """Create a downhole direction vector for the downholes"""
+        path_table = self.path_table()
         path_args = self.data_client.save_table(path_table)
         return DownholeDirectionVector.from_dict(path_args)
 
