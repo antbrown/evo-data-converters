@@ -16,6 +16,7 @@ from zipfile import BadZipFile
 import numpy as np
 import resqpy.crs as rqc
 import resqpy.olio.xml_et as rqet
+from evo.data_converters.common import crs_from_epsg_code
 from evo_schemas.components import Crs_V1_0_1_EpsgCode as Crs_EpsgCode
 from resqpy.grid import Grid
 from resqpy.model import Model, ModelContext
@@ -126,11 +127,11 @@ def get_crs_epsg_code(model: Model, int_epsg_code: Optional[int] = None) -> Crs_
     assert model is not None
 
     if int_epsg_code is not None:
-        return Crs_EpsgCode(epsg_code=int_epsg_code)
+        return crs_from_epsg_code(int_epsg_code)
 
     crs_root = rqc.Crs(model, uuid=model.crs_uuid)
     if crs_root is not None and crs_root.epsg_code is not None:
-        return Crs_EpsgCode(epsg_code=int(crs_root.epsg_code))
+        return crs_from_epsg_code(int(crs_root.epsg_code))
 
     return None
 

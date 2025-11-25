@@ -84,6 +84,17 @@ uv run jupyter notebook
 
 It should open a browser where you can open the notebooks for the current directory.
 
+## Getting started with Evo data converters samples
+
+For examples of how to use Evo data converters, please refer to the samples in each convertor of the `packages` directory.
+
+   * [OMF](packages/omf/samples)
+   * [RESQML](packages/resqml/samples)
+   * [VTK](packages/vtk/samples)
+   * [UBC](packages/ubc/samples)
+   * [GOCAD](packages/gocad/samples)
+   * [DUF samples](packages/duf/samples)
+
 ## Contributing
 
 Thank you for your interest in contributing to Seequent software. Please have a look over our [contribution guide.](./CONTRIBUTING.md)

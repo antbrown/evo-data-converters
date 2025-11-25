@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Create a report to help us improve
+about: Create a report to help us improve evo-data-converters
 title: "Bug: "
 ---
 
@@ -18,9 +18,10 @@ title: "Bug: "
 
 ## Environment
 <!-- Please complete the following information -->
-- **OS:** [e.g. macOS, Windows 10, Ubuntu 20.04]
+- **OS:** [e.g. macOS 26, Windows 11, Ubuntu 20.04]
 - **Package:** [e.g. evo-data-converters-omf]
-- **Version:** [e.g. v1.2.3]
+- **Package Version:** [e.g. 0.1.5]
+- **Python Version:** [e.g. 3.12.3]
 
 ## Screenshots/Logs
 <!-- If applicable, add screenshots or paste relevant log output -->
