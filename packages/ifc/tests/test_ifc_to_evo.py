@@ -43,10 +43,10 @@ class TestConvertIfc:
 
     @pytest.fixture
     def mock_base_spatial_data(self):
-        """Mock downhole collection object."""
-        collection = Mock(spec=BaseSpatialDataProperties_V1_0_1)
-        collection.tags = {}
-        return collection
+        """Mock spatial data properties object."""
+        properties = Mock(spec=BaseSpatialDataProperties_V1_0_1)
+        properties.tags = {}
+        return properties
 
     @pytest.fixture
     def mock_object_metadata(self):

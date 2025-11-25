@@ -8,3 +8,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+from .spatial_data_to_ifc import export_ifc_spatial_data
+from .evo_to_ifc import UnsupportedObjectError, export_ifc
+
+
+__all__ = [
+    "export_ifc_spatial_data",
+    "UnsupportedObjectError",
+    "export_ifc",
+]
