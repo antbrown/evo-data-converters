@@ -19,6 +19,7 @@ from python_ags4 import AGS4
 import evo_schemas
 
 from evo_schemas.objects import DownholeCollection_V1_3_1
+
 from ..common.ags_context import AgsFileInvalidException
 from evo.data_converters.common import (
     EvoObjectMetadata,
@@ -37,40 +38,63 @@ if TYPE_CHECKING:
 def _downhole_to_ags_groups(
     data_client: ObjectDataClient, object_id: UUID, object_version: Optional[str], dhc: DownholeCollection_V1_3_1
 ) -> (pd.DataFrame, pd.DataFrame):
-    holes = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.hole_id.as_dict()))
+    holes = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.hole_id.table.as_dict()))
     coords = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.coordinates.as_dict()))
-    measurments = asyncio.run(
-        data_client.download_table(object_id, object_version, dhc.collections.as_dict())
-    ).to_pandas()
+    distance_collections = [c for c in dhc.collections if c.collection_type == "distance"]
+    measurments = [
+        (
+            asyncio.run(data_client.download_table(object_id, object_version, m.holes.as_dict())).to_pandas(),
+            asyncio.run(data_client.download_table(object_id, object_version, m.distance.values.as_dict())).to_pandas(),
+            {
+                attr.name: asyncio.run(
+                    data_client.download_table(object_id, object_version, attr.values.as_dict())
+                ).to_pandas()
+                for attr in m.distance.attributes
+            },
+        )
+        for m in distance_collections
+    ]
 
-    # hole_idx = holes.column("key")[0]
-    hole_id = holes.column("value")[0]
+    hole_idx = holes.column("key")
+    hole_id = holes.column("value")
 
     loca = pd.DataFrame(
         {
             "LOCA_ID": hole_id,
-            "LOCA_NATE": coords.column("x")[0],
-            "LOCA_NATN": coords.column("y")[0],
-            "LOCA_GL": coords.column("z")[0],
-        }
+            "LOCA_NATE": coords.column("x"),
+            "LOCA_NATN": coords.column("y"),
+            "LOCA_GL": coords.column("z"),
+        },
+        index=hole_idx,
     )
 
-    scpt = {"LOCA_ID": hole_id}
-    for col in measurments.columns:
-        if col.startswith("SCPT"):
-            scpt[col] = measurments.get(col)
+    hole_id = hole_id.to_pandas()
+    scpg = []
+    scpt = []
 
-    scpg = {"LOCA_ID": hole_id}
-    for col in measurments.columns:
-        if col.startswith("SCPG"):
-            scpt[col] = measurments.get(col)
+    for holes, depth, data in measurments:
+        for hole_idx in range(hole_id.size):
+            for test_n in range(holes.at[hole_idx, "count"]):
+                entry_scpg = {"LOCA_ID": hole_id.at[hole_idx], "SCPG_TESN": test_n}
+                entry_scpt = {
+                    "LOCA_ID": hole_id.at[hole_idx],
+                    "SCPG_TESN": test_n,
+                    "SCPT_DPTH": depth.at[test_n, "values"],
+                }
 
-    tables = {"LOCA": loca}
-    headings = {"LOCA": loca.columns.to_list()}
-    for n, t in {"SCPT": scpt, "SCPG": scpg}:
-        if len(t) > 1:
-            tables[n] = t
-            headings[n] = t.columns.to_list()
+                for title, col in data.items():
+                    if title.startswith("SCPG") and title not in ["SCPG_TESN"]:
+                        entry_scpg[title] = col.at[test_n, "data"]
+                    elif title.startswith("SCPT") and title not in ["SCPT_DPTH"]:
+                        entry_scpt[title] = col.at[test_n, "data"]
+
+                scpg.append(pd.Series(entry_scpg))
+                scpt.append(pd.Series(entry_scpt))
+
+    scpg = pd.concat(scpg, axis=1).transpose()
+    scpt = pd.concat(scpt, axis=1).transpose()
+    tables = {"LOCA": loca.map(str), "SCPT": scpt.map(str), "SCPG": scpg.map(str)}
+    headings = {"LOCA": loca.columns.to_list(), "SCPT": scpt.columns.to_list(), "SCPG": scpg.columns.to_list()}
 
     return (tables, headings)
 
@@ -108,6 +132,6 @@ def export_ags(
 
     nest_asyncio.apply()
 
-    objs = [_export_obj(obj, service_client, data_client) for obj in objects]
+    tables, heading = _export_obj(objects[0], service_client, data_client)
 
-    AGS4.dataframe_to_AGS4(objs[0][0], objs[0][1], filepath)
+    AGS4.dataframe_to_AGS4(tables, heading, filepath)
