@@ -155,6 +155,38 @@ class AgsContext:
                 return " - ".join(parts)
         raise ValueError("Filename not available and PROJ_NAME/PROJ_ID not found in PROJ table")
 
+    @property
+    def name(self) -> str:
+        """Gets the name of the AGS file, if available.
+
+        Fallback (e.g. StringIO): filename of AGS file.
+
+        :returns: Project name or filename
+        :raises ValueError: if neither project name or filename are available
+        """
+        if "PROJ" in self._tables:
+            row = self._tables["PROJ"].iloc[0]
+            name = row.get("PROJ_NAME")
+            return name
+        elif self._filename is not None:
+            return self._filename
+        raise ValueError("PROJ_NAME not found in PROJ table and filename not available")
+
+    @property
+    def description(self) -> str:
+        """Gets the description of the AGS file, if available.
+
+        Fallback (e.g. StringIO): empty string
+
+        :returns: Project description from PROJ table PROJ_DESC column.
+        """
+        if "PROJ" in self._tables:
+            row = self._tables["PROJ"].iloc[0]
+            description = row.get("PROJ_DESC")
+            return description
+        else:
+            return ""
+
     def parse_ags(self, filepath: Path | str | StringIO) -> None:
         """Parses an AGS file to dataframes for each table.
 
