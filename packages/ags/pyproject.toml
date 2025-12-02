@@ -10,6 +10,7 @@ authors = [
 ]
 dependencies = [
     "evo-data-converters-common",
+    "evo-objects>=0.3.0",
     "python-ags4==1.1.0",
 ]
 classifiers = [
