@@ -99,6 +99,7 @@ def dhc_distance(collars_df, distance_table_mock):
     dhc_mock = Mock(spec=DownholeCollection)
     dhc_mock.name = "Test Distance Collection"
     dhc_mock.extensions = None
+    dhc_mock.tags = {"Test": "DistanceTag"}
     dhc_mock.coordinate_reference_system = 32633
     dhc_mock.collars = collars_mock
     dhc_mock.get_bounding_box.return_value = [100.0, 200.0, 500.0, 600.0, 50.0, 55.0]
@@ -116,6 +117,7 @@ def dhc_interval(collars_df, interval_table_mock, distance_table_mock):
     dhc_mock = Mock(spec=DownholeCollection)
     dhc_mock.name = "Test Interval Collection"
     dhc_mock.extensions = None
+    dhc_mock.tags = {"Test": "IntervalTag"}
     dhc_mock.coordinate_reference_system = 32633
     dhc_mock.collars = collars_mock
     dhc_mock.get_bounding_box.return_value = [100.0, 200.0, 500.0, 600.0, 50.0, 55.0]
@@ -140,6 +142,7 @@ def dhc_mixed(collars_df, distance_table_mock, interval_table_mock):
     dhc_mock = Mock(spec=DownholeCollection)
     dhc_mock.name = "Test Mixed Collection"
     dhc_mock.extensions = None
+    dhc_mock.tags = {"Test": "MixedTag"}
     dhc_mock.coordinate_reference_system = 32633
     dhc_mock.collars = collars_mock
     dhc_mock.get_bounding_box.return_value = [100.0, 200.0, 500.0, 600.0, 50.0, 55.0]
@@ -581,6 +584,7 @@ class TestEdgeCases:
         dhc_mock = Mock(spec=DownholeCollection)
         dhc_mock.name = "Minimal"
         dhc_mock.extensions = None
+        dhc_mock.tags = None
         dhc_mock.coordinate_reference_system = 4326
         dhc_mock.collars = collars_mock
         dhc_mock.get_bounding_box.return_value = [100.0, 100.0, 500.0, 500.0, 50.0, 50.0]
