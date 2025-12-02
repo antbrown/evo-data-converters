@@ -50,7 +50,7 @@ async def create_downhole_collection_from_evo(obj: DownloadedObject) -> Downhole
         try:
             attr = await AttributeFactory.create_from_evo(obj, attribute)
         except UnsupportedAttributeType:
-            logger.warn(f"Could not interpret collar attribute {attribute.name}, skipping.")
+            logger.warning(f"Could not interpret collar attribute {attribute.name}, skipping.")
             continue
         collar_nan_mappings[attribute.name] = attr.attrs["nan_values"]
         assert len(attr) == len(collars_df), f"Collar attribute {attribute['key']} has the wrong number of rows"
@@ -154,7 +154,7 @@ async def create_measurement_table(
         try:
             attr = await AttributeFactory.create_from_evo(obj, attribute)
         except UnsupportedAttributeType:
-            logger.warn(f"Could not interpret measurement attribute {attribute.name}, skipping.")
+            logger.warning(f"Could not interpret measurement attribute {attribute.name}, skipping.")
             continue
         nan_mappings[attribute.name] = attr.attrs["nan_values"]
         assert len(attr) == len(measurements_df), f"Attribute {attribute['key']} has the wrong number of rows"
