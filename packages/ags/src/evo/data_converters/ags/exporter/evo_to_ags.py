@@ -133,8 +133,8 @@ def _export_obj(
 
     evo_object = object_class.from_dict(evo_object)
 
-    match schema:
-        case "/objects/downhole-collection/1.3.1/downhole-collection.schema.json":
+    match ObjectSchema.from_id(evo_object["schema"]).sub_classification:
+        case "downhole-collection":
             return _downhole_to_ags_groups(data_client, obj_meta.object_id, obj_meta.version_id, evo_object)
         case _:
             raise AgsFileInvalidException(f"Cannot export {object_class} to AGS")
