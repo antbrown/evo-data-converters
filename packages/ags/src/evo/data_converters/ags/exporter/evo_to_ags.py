@@ -10,15 +10,7 @@
 #  limitations under the License.
 
 import asyncio
-from typing import TYPE_CHECKING, Optional
-from uuid import UUID
-
 import nest_asyncio
-from python_ags4 import AGS4
-
-import evo_schemas
-
-from evo_schemas.objects import DownholeCollection_V1_3_1
 
 from ..common.ags_context import AgsFileInvalidException
 from evo.data_converters.common import (
@@ -29,10 +21,21 @@ from evo.data_converters.common import (
 from evo.objects.client import ObjectAPIClient
 from evo.objects.data import ObjectSchema
 from evo.objects.utils.data import ObjectDataClient
+from evo_schemas import schema_lookup
+from evo_schemas.objects import DownholeCollection_V1_3_1
+
+from python_ags4 import AGS4
+from typing import TYPE_CHECKING, Optional
+from uuid import UUID
 import pandas as pd
+
+import evo.logging
 
 if TYPE_CHECKING:
     from evo.notebooks import ServiceManagerWidget
+
+
+logger = evo.logging.getLogger("data_converters")
 
 
 def _downhole_to_ags_groups(
@@ -41,7 +44,7 @@ def _downhole_to_ags_groups(
     holes = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.hole_id.table.as_dict()))
     coords = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.coordinates.as_dict()))
     distance_collections = [c for c in dhc.collections if c.collection_type == "distance"]
-    measurments = [
+    measurements = [
         (
             asyncio.run(data_client.download_table(object_id, object_version, m.holes.as_dict())).to_pandas(),
             asyncio.run(data_client.download_table(object_id, object_version, m.distance.values.as_dict())).to_pandas(),
@@ -72,7 +75,7 @@ def _downhole_to_ags_groups(
     scpg = []
     scpt = []
 
-    for holes, depth, data in measurments:
+    for holes, depth, data in measurements:
         for hole_idx in range(hole_id.size):
             for test_n in range(holes.at[hole_idx, "count"]):
                 entry_scpg = {"LOCA_ID": hole_id.at[hole_idx], "SCPG_TESN": test_n}
@@ -91,10 +94,27 @@ def _downhole_to_ags_groups(
                 scpg.append(pd.Series(entry_scpg))
                 scpt.append(pd.Series(entry_scpt))
 
+    proj = pd.DataFrame(
+        {
+            "PROJ_ID": [dhc.uuid],
+            "PROJ_NAME": [dhc.name],
+            "PROJ_MEMO": [f"Exported from Seequent Evo {pd.Timestamp.now().strftime('%Y-%m-%d')}"],
+        }
+    )
     scpg = pd.concat(scpg, axis=1).transpose()
     scpt = pd.concat(scpt, axis=1).transpose()
-    tables = {"LOCA": loca.map(str), "SCPT": scpt.map(str), "SCPG": scpg.map(str)}
-    headings = {"LOCA": loca.columns.to_list(), "SCPT": scpt.columns.to_list(), "SCPG": scpg.columns.to_list()}
+    tables = {
+        "PROJ": proj.map(str),
+        "LOCA": loca.map(str),
+        "SCPT": scpt.map(str),
+        "SCPG": scpg.map(str),
+    }
+    headings = {
+        "PROJ": proj.columns.to_list(),
+        "LOCA": loca.columns.to_list(),
+        "SCPT": scpt.columns.to_list(),
+        "SCPG": scpg.columns.to_list(),
+    }
 
     return (tables, headings)
 
@@ -106,7 +126,7 @@ def _export_obj(
 ) -> (pd.DataFrame, pd.DataFrame):
     evo_object = asyncio.run(service_client.download_object_by_id(obj_meta.object_id, obj_meta.version_id)).as_dict()
     schema = str(ObjectSchema.from_id(evo_object["schema"]))
-    object_class = evo_schemas.schema_lookup.get(schema)
+    object_class = schema_lookup.get(schema)
 
     if not object_class:
         raise AgsFileInvalidException(f"Unknown Geoscience Object schema '{schema}'")
