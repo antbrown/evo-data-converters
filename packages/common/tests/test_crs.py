@@ -15,7 +15,7 @@ from evo_schemas.components import Crs_V1_0_1 as Crs
 from evo_schemas.components import Crs_V1_0_1_EpsgCode as Crs_EpsgCode
 from evo_schemas.components import Crs_V1_0_1_OgcWkt as Crs_OgcWkt
 
-from evo.data_converters.common.crs import crs_from_epsg_code, crs_from_ogc_wkt, crs_unspecified, crs_from_any
+from evo.data_converters.common import crs_from_epsg_code, crs_from_ogc_wkt, crs_unspecified, crs_from_any
 
 
 class TestCrs(TestCase):
@@ -139,6 +139,11 @@ PROJCS["NZGD2000 / New Zealand Transverse Mercator 2000",
 
     def test_any_unspecified_crs(self) -> None:
         crs_obj = crs_from_any(None)
+        self.assertIsInstance(crs_obj, Crs)
+        self.assertEqual("unspecified", crs_obj)
+
+    def test_any_unspecified_crs_from_literal_unspecified(self) -> None:
+        crs_obj = crs_from_any("unspecified")
         self.assertIsInstance(crs_obj, Crs)
         self.assertEqual("unspecified", crs_obj)
 
