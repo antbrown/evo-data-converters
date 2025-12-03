@@ -25,7 +25,7 @@ from evo.data_converters.common.objects.downhole_collection import (
     MeasurementTableFactory,
 )
 
-from .gef_spec import MEASUREMENT_TEXT_NAMES, MEASUREMENT_UNITS, MEASUREMENT_VAR_NAMES
+from .gef_spec import MEASUREMENT_TEXT_NAMES, MEASUREMENT_UNITS, MEASUREMENT_VAR_NAMES, MEASUREMENT_UNIT_CONVERSIONS
 
 logger = evo.logging.getLogger("data_converters")
 gef_unit_registry = pint.get_application_registry()
@@ -337,7 +337,9 @@ class DownholeCollectionBuilder:
         """Apply pint units to the measurements DataFrame based on looking up the expected
         units for the column name in the MEASUREMENT_UNITS dictionary. If the column name
         maps to an empty string then the column is treated as dimensionless, and is not
-        modified here.
+        modified here. If the column name maps to a unit that is in the
+        MEASUREMENT_UNIT_CONVERSIONS dictionary then the column is converted to the
+        specified unit. NOTE: This conversion will possibly modify the data.
 
         :param measurements: The measurements DataFrame to apply units to
         :param cpt_data: CPT data object
@@ -346,7 +348,10 @@ class DownholeCollectionBuilder:
         """
         for col in cpt_data.data.columns:
             if col in MEASUREMENT_UNITS and MEASUREMENT_UNITS[col] != "":
-                measurements[col] = measurements[col].astype(f"pint[{MEASUREMENT_UNITS[col]}]")
+                gef_unit = MEASUREMENT_UNITS[col]
+                measurements[col] = measurements[col].astype(f"pint[{gef_unit}]")
+                if gef_unit in MEASUREMENT_UNIT_CONVERSIONS:
+                    measurements[col] = measurements[col].pint.to(MEASUREMENT_UNIT_CONVERSIONS[gef_unit])
 
         return measurements
 

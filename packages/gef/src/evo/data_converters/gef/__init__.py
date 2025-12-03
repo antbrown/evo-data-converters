@@ -14,9 +14,5 @@ from pint import UnitRegistry, set_application_registry
 # Create one registry for the GEF package
 gef_unit_registry = UnitRegistry()
 
-# Custom units not standard in pint
-gef_unit_registry.define("kN_per_m3 = kilonewton / meter ** 3 = kN/m3")
-gef_unit_registry.define("percent = 0.01 = % = pct")
-
 # Set up pint-pandas to use that registry
 set_application_registry(gef_unit_registry)

@@ -110,7 +110,7 @@ MEASUREMENT_UNITS: dict[str, str] = {
     "penetrationLength": "m",
     "coneResistance": "MPa",
     "localFriction": "MPa",
-    "frictionRatio": "%",
+    "frictionRatio": "",
     "porePressureU1": "MPa",
     "porePressureU2": "MPa",
     "porePressureU3": "MPa",
@@ -123,7 +123,7 @@ MEASUREMENT_UNITS: dict[str, str] = {
     "netConeResistance": "MPa",
     "poreRatio": "",
     "coneResistanceRatio": "",
-    "soilDensity": "kN/m3",
+    "soilDensity": "kN/m^3",
     "porePressure": "MPa",
     "verticalPorePressureTotal": "MPa",
     "verticalPorePressureEffective": "MPa",
@@ -136,4 +136,8 @@ MEASUREMENT_UNITS: dict[str, str] = {
     "magneticFieldStrengthTotal": "nT",
     "magneticInclination": "degrees",
     "magneticDeclination": "degrees",
+}
+
+MEASUREMENT_UNIT_CONVERSIONS: dict[str, str] = {
+    "kN/m^3": "N/m^3",
 }
