@@ -28,7 +28,6 @@ from evo.data_converters.common.objects.downhole_collection import (
 from .gef_spec import MEASUREMENT_TEXT_NAMES, MEASUREMENT_UNITS, MEASUREMENT_VAR_NAMES, MEASUREMENT_UNIT_CONVERSIONS
 
 logger = evo.logging.getLogger("data_converters")
-gef_unit_registry = pint.get_application_registry()
 
 
 class DownholeCollectionBuilder:
