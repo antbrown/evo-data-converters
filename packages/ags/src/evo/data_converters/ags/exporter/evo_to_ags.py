@@ -10,6 +10,10 @@
 #  limitations under the License.
 
 import asyncio
+from typing import TYPE_CHECKING, Optional
+from datetime import datetime
+from uuid import UUID
+
 import nest_asyncio
 
 from evo.data_converters.common import (
@@ -24,8 +28,6 @@ from evo_schemas import schema_lookup
 from evo_schemas.objects import DownholeCollection_V1_3_1
 
 from python_ags4 import AGS4
-from typing import TYPE_CHECKING, Optional
-from uuid import UUID
 import pandas as pd
 
 import evo.logging
@@ -122,17 +124,32 @@ def _downhole_to_ags_groups(
     )
     scpg = pd.concat(scpg, axis=1).transpose()
     scpt = pd.concat(scpt, axis=1).transpose()
+
+    tran = pd.DataFrame(
+        {
+            "TRAN_ISNO": ["1"],
+            "TRAN_DATE": [datetime.today().strftime("%Y-%m-%d")],
+            "TRAN_PROD": ["Evo Data Converters"],
+            "TRAN_STAT": ["Final"],
+            "TRAN_DESC": ["Export of Downhole Collection from Evo to AGS 4.1 file"],
+            "TRAN_AGS": ["4.1"],
+            "TRAN_RECV": ["Unknown"],
+        }
+    )
+
     tables = {
         "PROJ": proj.map(str),
         "LOCA": loca.map(str),
         "SCPT": scpt.map(str),
         "SCPG": scpg.map(str),
+        "TRAN": tran,
     }
     headings = {
         "PROJ": proj.columns.to_list(),
         "LOCA": loca.columns.to_list(),
         "SCPT": scpt.columns.to_list(),
         "SCPG": scpg.columns.to_list(),
+        "TRAN": tran.columns.to_list(),
     }
 
     return (tables, headings)
