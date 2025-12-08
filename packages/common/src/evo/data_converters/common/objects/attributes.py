@@ -9,8 +9,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from evo.objects.utils.data import ObjectDataClient
+import typing
+from dataclasses import dataclass
+from enum import Enum
+
+import pandas as pd
+import pyarrow as pa
 from evo_schemas.components import (
+    AttributeDescription_V1_0_1 as AttributeDescription,
     BoolAttribute_V1_1_0 as BoolAttribute,
     CategoryAttribute_V1_1_0 as CategoryAttribute,
     ContinuousAttribute_V1_1_0 as ContinuousAttribute,
@@ -29,13 +35,11 @@ from evo_schemas.elements import (
     LookupTable_V1_0_1 as LookupTable,
     StringArray_V1_0_1 as StringArray,
 )
+from pint_pandas import PintType, PintArray
 
 import evo.logging
-import pandas as pd
-import pyarrow as pa
-import typing
-from enum import Enum
-from dataclasses import dataclass
+from evo.data_converters.common.objects.units import UnitMapper
+from evo.objects.utils.data import ObjectDataClient
 
 logger = evo.logging.getLogger("data_converters")
 
@@ -172,6 +176,23 @@ class AttributeFactory:
             logger.debug(f"Got passed an empty series for attribute {name}, skipping Attribute creation.")
             return None
 
+        attribute_description = None
+        nan_values_list = list(series.attrs.get("nan_values", []))
+
+        # If series has a Pint Data Type, then we will need to create an AttributeDescription
+        # to pass the type info to EVO.
+        if isinstance(series.dtype, PintType):
+            unit = UnitMapper.lookup(series.dtype)
+            if unit is not None:
+                attribute_description = AttributeDescription(discipline="None", type=unit)
+            else:
+                logger.warning(f"Unable to map {series.dtype} to an EVO unit")
+
+            series = pd.Series(series.pint.magnitude, index=series.index, name=series.name)
+            # Note that Pint magnitudes are floats, so need to Map the nan_values to float
+            # otherwise the ContinuousAttribute constructor will fail, as it requires the nan_values be a float.
+            nan_values_list = [float(i) for i in nan_values_list]
+
         inferred_type: str = pd.api.types.infer_dtype(series, skipna=True)
 
         if inferred_type == "categorical":
@@ -201,11 +222,11 @@ class AttributeFactory:
             "key": name,
             "name": name,
             "values": array_element,
+            "attribute_description": attribute_description,
         }
 
         # Add nan_description if the attribute supports it
         if config.nan_class is not None:
-            nan_values_list = list(series.attrs.get("nan_values", []))
             nan_values = (
                 [int(v) for v in nan_values_list]
                 if config.data_type in {DataType.INTEGER, DataType.DATETIME}
