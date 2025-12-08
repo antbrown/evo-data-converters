@@ -12,6 +12,7 @@
 import asyncio
 import nest_asyncio
 
+from ..common.ags_context import AgsFileInvalidException
 from evo.data_converters.common import (
     EvoObjectMetadata,
     EvoWorkspaceMetadata,
@@ -30,28 +31,8 @@ import pandas as pd
 
 import evo.logging
 
-# from evo.data_converters.common.objects.downhole_collection import (
-#     DownholeCollection as IntermediaryDownholeCollection,
-#     HoleCollars,
-#     ColumnMapping,
-#     MeasurementTableAdapter,
-#     MeasurementTableFactory,
-# )
-
 if TYPE_CHECKING:
     from evo.notebooks import ServiceManagerWidget
-
-
-class AGSExporterException(Exception):
-    pass
-
-
-class AgsFileInvalidException(Exception):
-    pass
-
-
-class UnsupportedObjectError(AGSExporterException):
-    pass
 
 
 logger = evo.logging.getLogger("data_converters")
@@ -63,6 +44,7 @@ def _downhole_to_ags_groups(
     holes = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.hole_id.table.as_dict()))
     coords = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.coordinates.as_dict()))
     distance_collections = [c for c in dhc.collections if c.collection_type == "distance"]
+    interval_collections = [c for c in dhc.collections if c.collection_type == "interval"]
     measurements = [
         (
             asyncio.run(data_client.download_table(object_id, object_version, m.holes.as_dict())).to_pandas(),
@@ -75,6 +57,21 @@ def _downhole_to_ags_groups(
             },
         )
         for m in distance_collections
+    ]
+    interval_measurements = [
+        (
+            asyncio.run(data_client.download_table(object_id, object_version, c.holes.as_dict())).to_pandas(),
+            asyncio.run(
+                data_client.download_table(object_id, object_version, c.from_to.intervals.start_and_end.as_dict())
+            ).to_pandas(),
+            {
+                attr.name: asyncio.run(
+                    data_client.download_table(object_id, object_version, attr.values.as_dict())
+                ).to_pandas()
+                for attr in c.from_to.attributes
+            },
+        )
+        for c in interval_collections
     ]
 
     hole_idx = holes.column("key")
@@ -93,25 +90,46 @@ def _downhole_to_ags_groups(
     hole_id = hole_id.to_pandas()
     scpg = []
     scpt = []
+    geol = []
 
     for holes, depth, data in measurements:
-        for hole_idx in range(hole_id.size):
-            for test_n in range(holes.at[hole_idx, "count"]):
-                entry_scpg = {"LOCA_ID": hole_id.at[hole_idx], "SCPG_TESN": test_n}
+        for hole_idx in holes["hole_index"]:
+            row = holes["hole_index"] == hole_idx
+            offset = holes.loc[row, "offset"].item()
+            for test_n in range(holes.loc[row, "count"].item()):
+                entry_scpg = {"LOCA_ID": hole_id.loc[row].item(), "SCPG_TESN": test_n}
                 entry_scpt = {
-                    "LOCA_ID": hole_id.at[hole_idx],
+                    "LOCA_ID": hole_id.loc[row].item(),
                     "SCPG_TESN": test_n,
-                    "SCPT_DPTH": depth.at[test_n, "values"],
+                    "SCPT_DPTH": depth.at[test_n + offset, "values"],
                 }
 
                 for title, col in data.items():
                     if title.startswith("SCPG") and title not in ["SCPG_TESN"]:
-                        entry_scpg[title] = col.at[test_n, "data"]
+                        entry_scpg[title] = col.at[test_n + offset, "data"]
                     elif title.startswith("SCPT") and title not in ["SCPT_DPTH"]:
-                        entry_scpt[title] = col.at[test_n, "data"]
+                        entry_scpt[title] = col.at[test_n + offset, "data"]
 
                 scpg.append(pd.Series(entry_scpg))
                 scpt.append(pd.Series(entry_scpt))
+
+    for holes, from_to, data in interval_measurements:
+        for hole_idx in holes["hole_index"]:
+            row = holes["hole_index"] == hole_idx
+            offset = holes.loc[row, "offset"].item()
+            for test_n in range(holes.loc[row, "count"].item()):
+                for i, row_data in from_to.iterrows():
+                    entry_geol = {
+                        "LOCA_ID": hole_id.at[hole_idx],
+                        "GEOL_TOP": row_data.at["from"],
+                        "GEOL_BASE": row_data.at["to"],
+                    }
+
+                    for title, col in data.items():
+                        if title.startswith("GEOL") and title not in ["GEOL_TOP", "GEOL_BASE"]:
+                            entry_geol[title] = col.at[test_n + offset, "data"]
+
+                    geol.append(pd.Series(entry_geol))
 
     proj = pd.DataFrame(
         {
@@ -122,17 +140,20 @@ def _downhole_to_ags_groups(
     )
     scpg = pd.concat(scpg, axis=1).transpose()
     scpt = pd.concat(scpt, axis=1).transpose()
+    geol = pd.concat(geol, axis=1).transpose()
     tables = {
         "PROJ": proj.map(str),
         "LOCA": loca.map(str),
         "SCPT": scpt.map(str),
         "SCPG": scpg.map(str),
+        "GEOL": geol.map(str),
     }
     headings = {
         "PROJ": proj.columns.to_list(),
         "LOCA": loca.columns.to_list(),
         "SCPT": scpt.columns.to_list(),
         "SCPG": scpg.columns.to_list(),
+        "GEOL": geol.columns.to_list(),
     }
 
     return (tables, headings)
@@ -143,21 +164,20 @@ def _export_obj(
     service_client: ObjectAPIClient,
     data_client: ObjectDataClient,
 ) -> (pd.DataFrame, pd.DataFrame):
-    evo_object = asyncio.run(service_client.download_object_by_id(obj_meta.object_id, obj_meta.version_id)).as_dict()
-    schema = str(ObjectSchema.from_id(evo_object["schema"]))
-    object_class = schema_lookup.get(schema)
+    evo_dict = asyncio.run(service_client.download_object_by_id(obj_meta.object_id, obj_meta.version_id)).as_dict()
+    schema = ObjectSchema.from_id(evo_dict["schema"])
+    object_class = schema_lookup.get(str(schema))
 
     if not object_class:
-        raise UnsupportedObjectError(f"Unknown Geoscience Object schema '{schema}'")
+        raise AgsFileInvalidException(f"Unknown Geoscience Object schema '{schema.sub_classification}'")
 
-    sub_classification = ObjectSchema.from_id(evo_object["schema"]).sub_classification
-    evo_object = object_class.from_dict(evo_object)
+    evo_object = object_class.from_dict(evo_dict)
 
-    match sub_classification:
+    match schema.sub_classification:
         case "downhole-collection":
             return _downhole_to_ags_groups(data_client, obj_meta.object_id, obj_meta.version_id, evo_object)
         case _:
-            raise UnsupportedObjectError(f"Cannot export {object_class} to AGS")
+            raise AgsFileInvalidException(f"Cannot export {object_class} to AGS")
 
 
 def export_ags(
