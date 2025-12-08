@@ -12,7 +12,6 @@
 import asyncio
 import nest_asyncio
 
-from ..common.ags_context import AgsFileInvalidException
 from evo.data_converters.common import (
     EvoObjectMetadata,
     EvoWorkspaceMetadata,
@@ -33,6 +32,22 @@ import evo.logging
 
 if TYPE_CHECKING:
     from evo.notebooks import ServiceManagerWidget
+
+
+class AgsExporterException(Exception):
+    """
+    Raised for exporter exceptions
+    """
+
+    pass
+
+
+class UnsupportedObjectException(Exception):
+    """
+    Raised if the object to export is not supported
+    """
+
+    pass
 
 
 logger = evo.logging.getLogger("data_converters")
@@ -140,21 +155,22 @@ def _downhole_to_ags_groups(
     )
     scpg = pd.concat(scpg, axis=1).transpose()
     scpt = pd.concat(scpt, axis=1).transpose()
-    geol = pd.concat(geol, axis=1).transpose()
     tables = {
         "PROJ": proj.map(str),
         "LOCA": loca.map(str),
         "SCPT": scpt.map(str),
         "SCPG": scpg.map(str),
-        "GEOL": geol.map(str),
     }
     headings = {
         "PROJ": proj.columns.to_list(),
         "LOCA": loca.columns.to_list(),
         "SCPT": scpt.columns.to_list(),
         "SCPG": scpg.columns.to_list(),
-        "GEOL": geol.columns.to_list(),
     }
+    if geol:
+        geol = pd.concat(geol, axis=1).transpose()
+        tables["GEOL"] = geol.map(str)
+        tables["GEOL"] = geol.columns.to_list()
 
     return (tables, headings)
 
@@ -169,7 +185,7 @@ def _export_obj(
     object_class = schema_lookup.get(str(schema))
 
     if not object_class:
-        raise AgsFileInvalidException(f"Unknown Geoscience Object schema '{schema.sub_classification}'")
+        raise UnsupportedObjectException(f"Unknown Geoscience Object schema '{schema.sub_classification}'")
 
     evo_object = object_class.from_dict(evo_dict)
 
@@ -177,7 +193,7 @@ def _export_obj(
         case "downhole-collection":
             return _downhole_to_ags_groups(data_client, obj_meta.object_id, obj_meta.version_id, evo_object)
         case _:
-            raise AgsFileInvalidException(f"Cannot export {object_class} to AGS")
+            raise UnsupportedObjectException(f"Cannot export {object_class} to AGS")
 
 
 def export_ags(
