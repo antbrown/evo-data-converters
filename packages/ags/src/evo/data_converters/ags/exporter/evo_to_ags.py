@@ -153,24 +153,20 @@ def _downhole_to_ags_groups(
             "PROJ_MEMO": [f"Exported from Seequent Evo {pd.Timestamp.now().strftime('%Y-%m-%d')}"],
         }
     )
-    scpg = pd.concat(scpg, axis=1).transpose()
-    scpt = pd.concat(scpt, axis=1).transpose()
     tables = {
         "PROJ": proj.map(str),
         "LOCA": loca.map(str),
-        "SCPT": scpt.map(str),
-        "SCPG": scpg.map(str),
     }
     headings = {
         "PROJ": proj.columns.to_list(),
         "LOCA": loca.columns.to_list(),
-        "SCPT": scpt.columns.to_list(),
-        "SCPG": scpg.columns.to_list(),
     }
-    if geol:
-        geol = pd.concat(geol, axis=1).transpose()
-        tables["GEOL"] = geol.map(str)
-        tables["GEOL"] = geol.columns.to_list()
+
+    for name, series in [("SCPT", scpt), ("SCPG", scpg), ("GEOL", geol)]:
+        if series:
+            table = pd.concat(series, axis=1).transpose()
+            tables[name] = table.map(str)
+            headings[name] = table.columns.to_list()
 
     return (tables, headings)
 
