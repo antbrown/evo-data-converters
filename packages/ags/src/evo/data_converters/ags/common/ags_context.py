@@ -14,6 +14,7 @@ from io import StringIO
 from pathlib import Path
 
 import pandas as pd
+from pint_pandas import PintType as _  # noqa: F401
 from pyproj import CRS
 from pyproj.exceptions import CRSError
 from python_ags4 import AGS4
@@ -21,6 +22,7 @@ from python_ags4 import AGS4
 import evo.logging
 from evo.data_converters.common.objects.downhole_collection.column_mapping import ColumnMapping
 
+from .ags_spec import MEASUREMENT_UNITS
 from .pandas_utils import coerce_to_object_int
 
 logger = evo.logging.getLogger("data_converters")
@@ -303,11 +305,30 @@ class AgsContext:
             # Convert all NaN-like values (NaT, None, NaN) to pd.NA
             df = df.mask(df.isna(), pd.NA)
 
+            # Apply units to the measurements DataFrame
+            if group in self.MEASUREMENT_GROUPS:
+                df = self._apply_measurement_units(df)
+
             processed_tables[group] = df
 
         # Store the processed tables and keep the original headings dict
         self._tables = processed_tables
         self._headings = {group: headings[group] for group in processed_tables.keys()}
+
+    def _apply_measurement_units(self, measurements: pd.DataFrame) -> pd.DataFrame:
+        """Apply pint units to the measurements DataFrame based on looking up the expected
+        units for the column name in the MEASUREMENT_UNITS dictionary.
+
+        :param measurements: The measurements DataFrame to apply units to
+
+        :return: DataFrame with applied pint units
+        """
+        for col in measurements.columns:
+            ags_unit = MEASUREMENT_UNITS.get(col)
+            if ags_unit is not None and ags_unit != "":
+                measurements[col] = measurements[col].astype(f"pint[{ags_unit}]")
+
+        return measurements
 
     def validate_ags(self) -> list[str]:
         """Validate the in-memory AGS dataframes, returning a list of error messages.
