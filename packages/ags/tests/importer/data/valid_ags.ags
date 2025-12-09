@@ -2,7 +2,7 @@
 "HEADING","PROJ_ID","PROJ_NAME","PROJ_LOC","PROJ_CLNT","PROJ_CONT","PROJ_ENG","PROJ_MEMO","FILE_FSET"
 "UNIT","","","","","","","",""
 "TYPE","ID","X","X","X","X","X","X","X"
-"DATA","EXAMPLE-1","Example AGS, with CPT data","","","","","",""
+"DATA","EXAMPLE-1","Example AGS, with CPT data","","","","","Example description",""
 
 
 "GROUP","TRAN"

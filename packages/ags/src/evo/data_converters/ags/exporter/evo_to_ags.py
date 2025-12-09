@@ -148,11 +148,26 @@ def _downhole_to_ags_groups(
 
     proj = pd.DataFrame(
         {
-            "PROJ_ID": [dhc.tags["AGS:PROJ:PROJ_ID"] or dhc.uuid],
-            "PROJ_NAME": [dhc.tags["AGS:PROJ:PROJ_NAME"] or dhc.name],
+            "HEADING": [
+                "UNIT",
+                "TYPE",
+                "DATA",
+            ],
+            "PROJ_ID": [
+                "",
+                "ID",
+                dhc.tags["AGS:PROJ:PROJ_ID"] or dhc.uuid,
+            ],
+            "PROJ_NAME": [
+                "",
+                "X",
+                dhc.tags["AGS:PROJ:PROJ_NAME"] or dhc.name,
+            ],
             "PROJ_MEMO": [
+                "",
+                "X",
                 dhc.description
-                or f"Exported from Seequent Evo Data Converters - {pd.Timestamp.now().strftime('%Y-%m-%d')}"
+                or f"Exported from Seequent Evo Data Converters - {pd.Timestamp.now().strftime('%Y-%m-%d')}",
             ],
         }
     )
@@ -208,6 +223,6 @@ def export_ags(
 
     nest_asyncio.apply()
 
-    tables, heading = _export_obj(objects[0], service_client, data_client)
+    tables, headings = _export_obj(objects[0], service_client, data_client)
 
-    AGS4.dataframe_to_AGS4(tables, heading, filepath)
+    AGS4.dataframe_to_AGS4(tables, headings, filepath)
