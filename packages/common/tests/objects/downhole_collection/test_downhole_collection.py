@@ -76,10 +76,8 @@ class TestDownholeCollectionInitialization:
         dc = DownholeCollection(
             collars=valid_collars,
             name="Test Collection",
-            description="Test description",
         )
         assert dc.name == "Test Collection"
-        assert dc.description == "Test description"
         assert dc.collars == valid_collars
         assert len(dc.measurements) == 0
         assert dc.coordinate_reference_system is None
