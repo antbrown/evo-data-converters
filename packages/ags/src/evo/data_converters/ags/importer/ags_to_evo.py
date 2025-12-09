@@ -86,7 +86,8 @@ def convert_ags(
         "InputType": "AGS",
         "Source Filename": filepath.split("/")[-1],
         "AGS:PROJ:PROJ_ID": ags_context.project_id,
-        "AGS:PROJ:PROJ_NAME": ags_context.name,
+        "AGS:PROJ:PROJ_NAME": ags_context.project_name,
+        "AGS:PROJ:PROJ_MEMO": ags_context.project_memo,
     }
 
     merged_tags: dict[str, str] = {**default_tags, **(tags or {})}

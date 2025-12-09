@@ -173,7 +173,7 @@ class AgsContext:
         raise ValueError("PROJ_ID not found in PROJ table and filename not available")
 
     @property
-    def name(self) -> str:
+    def project_name(self) -> str:
         """Gets AGS name
 
         Fallback (e.g. StringIO): filename of AGS file.
@@ -190,7 +190,7 @@ class AgsContext:
         raise ValueError("PROJ_NAME not found in PROJ table and filename not available")
 
     @property
-    def description(self) -> str:
+    def project_memo(self) -> str:
         """Gets the AGS description
 
         :returns: Project description from PROJ table PROJ_DESC column.
