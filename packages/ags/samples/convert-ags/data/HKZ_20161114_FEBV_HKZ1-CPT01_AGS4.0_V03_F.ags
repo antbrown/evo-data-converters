@@ -4,7 +4,7 @@
 "HEADING","PROJ_ID","PROJ_NAME","PROJ_LOC","PROJ_CLNT","PROJ_CONT","PROJ_ENG","PROJ_MEMO","FILE_FSET"
 "UNIT","","","","","","","",""
 "TYPE","ID","X","X","X","X","X","X","X"
-"DATA","N6196/02 (3)","HOLLANDSE KUST (ZUID) WFZ, WFS I - DUTCH SECTOR, NORTH SEA","HKZ1-CPT01","","","","",""
+"DATA","N6196/02 (3)","HOLLANDSE KUST (ZUID) WFZ, WFS I - DUTCH SECTOR, NORTH SEA","HKZ1-CPT01","","","","Example description",""
 
 
 "GROUP","TRAN"

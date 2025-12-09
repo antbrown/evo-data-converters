@@ -69,6 +69,7 @@ def create_from_parsed_ags(
     downhole_collection: DownholeCollection = DownholeCollection(
         collars=hole_collars,
         name=ags_context.filename,
+        description=ags_context.description,
         measurements=measurements,
         coordinate_reference_system=ags_context.coordinate_reference_system or "unspecified",
         tags=tags,

@@ -84,7 +84,11 @@ def convert_ags(
         "Source": "AGS files (via Evo Data Converters)",
         "Stage": "Experimental",
         "InputType": "AGS",
+        "Source Filename": filepath.split("/")[-1],
+        "AGS:PROJ:PROJ_ID": ags_context.project_id,
+        "AGS:PROJ:PROJ_NAME": ags_context.name,
     }
+
     merged_tags: dict[str, str] = {**default_tags, **(tags or {})}
 
     downhole_collections: list[DownholeCollection] = [

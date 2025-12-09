@@ -148,9 +148,9 @@ def _downhole_to_ags_groups(
 
     proj = pd.DataFrame(
         {
-            "PROJ_ID": [dhc.uuid],
-            "PROJ_NAME": [dhc.name],
-            "PROJ_MEMO": [f"Exported from Seequent Evo {pd.Timestamp.now().strftime('%Y-%m-%d')}"],
+            "PROJ_ID": [dhc.tags["AGS:PROJ:PROJ_ID"] or dhc.uuid],
+            "PROJ_NAME": [dhc.tags["AGS:PROJ:PROJ_NAME"] or dhc.name],
+            "PROJ_MEMO": [f"Exported from Seequent Evo Data Converters - {pd.Timestamp.now().strftime('%Y-%m-%d')}"],
         }
     )
 
