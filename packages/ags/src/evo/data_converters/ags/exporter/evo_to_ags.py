@@ -103,9 +103,10 @@ def _downhole_to_ags_groups(
     )
 
     hole_id = hole_id.to_pandas()
-    scpg = []
-    scpt = []
     geol = []
+    scpg = []
+    scpp = []
+    scpt = []
 
     for holes, depth, data in measurements:
         for hole_idx in holes["hole_index"]:
@@ -139,12 +140,21 @@ def _downhole_to_ags_groups(
                         "GEOL_TOP": row_data.at["from"],
                         "GEOL_BASE": row_data.at["to"],
                     }
+                    entry_scpp = {
+                        "LOCA_ID": hole_id.at[hole_idx],
+                        "SCPP_TOP": row_data.at["from"],
+                        "SCPP_BASE": row_data.at["to"],
+                    }
 
                     for title, col in data.items():
                         if title.startswith("GEOL") and title not in ["GEOL_TOP", "GEOL_BASE"]:
                             entry_geol[title] = col.at[test_n + offset, "data"]
 
+                        if title.startswith("SCPP") and title not in ["SCPP_TOP", "SCPP_BASE"]:
+                            entry_geol[title] = col.at[test_n + offset, "data"]
+
                     geol.append(pd.Series(entry_geol))
+                    scpp.append(pd.Series(entry_scpp))
 
     proj = pd.DataFrame(
         {
@@ -181,7 +191,7 @@ def _downhole_to_ags_groups(
         "LOCA": loca.columns.to_list(),
     }
 
-    for name, series in [("SCPT", scpt), ("SCPG", scpg), ("GEOL", geol)]:
+    for name, series in [("GEOL", geol), ("SCPG", scpg), ("SCPP", scpp), ("SCPT", scpt)]:
         if series:
             table = pd.concat(series, axis=1).transpose()
             tables[name] = table.map(str)
