@@ -54,7 +54,11 @@ logger = evo.logging.getLogger("data_converters")
 
 
 def _downhole_to_ags_groups(
-    data_client: ObjectDataClient, object_id: UUID, object_version: Optional[str], dhc: DownholeCollection_V1_3_1
+    data_client: ObjectDataClient,
+    object_id: UUID,
+    object_version: Optional[str],
+    dhc: DownholeCollection_V1_3_1,
+    data_fields: list((str, str, str)) = [],
 ) -> (pd.DataFrame, pd.DataFrame):
     holes = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.hole_id.table.as_dict()))
     coords = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.coordinates.as_dict()))
@@ -102,6 +106,18 @@ def _downhole_to_ags_groups(
         index=hole_idx,
     )
 
+    unit = pd.DataFrame(
+        {
+            "UNIT_UNIT": dhc.distance_unit or "m",
+            "UNIT_DESC": dhc.distance_unit or "Metre",
+        }
+    )
+    ags_type = pd.concat([pd.Series({"TYPE_TYPE": t, "TYPE_DESC": d}) for t, d in [("X", "Text")]], axis=1).transpose()
+
+    abbr = pd.concat(
+        [pd.Series({"ABBR_HDNG": h, "ABBR_CODE": c, "ABBR_DESC": d}) for h, c, d in [data_fields]], axis=1
+    ).transpose()
+
     hole_id = hole_id.to_pandas()
     scpg = []
     scpt = []
@@ -139,9 +155,18 @@ def _downhole_to_ags_groups(
                         "GEOL_TOP": row_data.at["from"],
                         "GEOL_BASE": row_data.at["to"],
                     }
+                    entry_scpp = {
+                        "LOCA_ID": hole_id.at[hole_idx],
+                        "SCPP_TESTN": test_n,
+                        "SCPP_TOP": row_data.at["from"],
+                        "SCPP_BASE": row_data.at["to"],
+                    }
 
                     for title, col in data.items():
                         if title.startswith("GEOL") and title not in ["GEOL_TOP", "GEOL_BASE"]:
+                            entry_geol[title] = col.at[test_n + offset, "data"]
+
+                        if title.startswith("SCPP") and title not in ["SCPP_TOP", "SCPP_BASE", "SCPP_TESTN"]:
                             entry_geol[title] = col.at[test_n + offset, "data"]
 
                     geol.append(pd.Series(entry_geol))
@@ -156,13 +181,17 @@ def _downhole_to_ags_groups(
     tables = {
         "PROJ": proj.map(str),
         "LOCA": loca.map(str),
+        "UNIT": unit.map(str),
+        "TYPE": ags_type.map(str),
     }
     headings = {
         "PROJ": proj.columns.to_list(),
         "LOCA": loca.columns.to_list(),
+        "UNIT": unit.columns.to_list(),
+        "TYPE": ags_type.columns.to_list(),
     }
 
-    for name, series in [("SCPT", scpt), ("SCPG", scpg), ("GEOL", geol)]:
+    for name, series in [("SCPT", scpt), ("SCPG", scpg), ("GEOL", geol), ("ABBR", abbr)]:
         if series:
             table = pd.concat(series, axis=1).transpose()
             tables[name] = table.map(str)
