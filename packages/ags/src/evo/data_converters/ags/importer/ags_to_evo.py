@@ -12,9 +12,6 @@
 
 from typing import TYPE_CHECKING
 
-from evo_schemas.objects import DownholeCollection_V1_3_1
-from python_ags4.AGS4 import AGS4Error
-
 import evo.logging
 from evo.data_converters.ags.common import AgsContext, AgsFileInvalidException
 from evo.data_converters.common import (
@@ -24,6 +21,8 @@ from evo.data_converters.common import (
 )
 from evo.data_converters.common.objects import DownholeCollection, DownholeCollectionToGeoscienceObject
 from evo.objects.data import ObjectMetadata
+from evo_schemas.objects import DownholeCollection_V1_3_1
+from python_ags4.AGS4 import AGS4Error
 
 from .ags_to_downhole_collection import create_from_parsed_ags
 from .parse_ags_files import parse_ags_files

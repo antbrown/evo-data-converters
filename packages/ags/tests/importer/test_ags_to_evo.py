@@ -11,10 +11,9 @@
 
 from unittest.mock import Mock, patch
 
-from evo_schemas.objects import DownholeCollection_V1_3_1
-
 from evo.data_converters.ags.importer.ags_to_evo import convert_ags
 from evo.objects.data import ObjectMetadata
+from evo_schemas.objects import DownholeCollection_V1_3_1
 
 
 def test_should_convert_ags_file_without_publish(evo_metadata, valid_ags_1a_path):
