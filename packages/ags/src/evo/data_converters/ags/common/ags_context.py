@@ -498,7 +498,7 @@ class AgsContext:
         try:
             crs = CRS.from_user_input(llz)
         except CRSError:
-            logger.warning(f"Could not determine CRS from LOCA_LLZ: {llz}")
+            logger.warning(f"Could not determine CRS from LOCA_LLZ: '{llz}'")
             return None
 
         return crs.to_epsg()
