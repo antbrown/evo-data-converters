@@ -119,9 +119,10 @@ def _downhole_to_ags_groups(
     ).transpose()
 
     hole_id = hole_id.to_pandas()
-    scpg = []
-    scpt = []
     geol = []
+    scpg = []
+    scpp = []
+    scpt = []
 
     for holes, depth, data in measurements:
         for hole_idx in holes["hole_index"]:
@@ -170,6 +171,7 @@ def _downhole_to_ags_groups(
                             entry_geol[title] = col.at[test_n + offset, "data"]
 
                     geol.append(pd.Series(entry_geol))
+                    scpp.append(pd.Series(entry_scpp))
 
     proj = pd.DataFrame(
         {
@@ -191,7 +193,7 @@ def _downhole_to_ags_groups(
         "TYPE": ags_type.columns.to_list(),
     }
 
-    for name, series in [("SCPT", scpt), ("SCPG", scpg), ("GEOL", geol), ("ABBR", abbr)]:
+    for name, series in [("ABBR", abbr), ("GEOL", geol), ("SCPG", scpg), ("SCPP", scpp), ("SCPT", scpt)]:
         if series:
             table = pd.concat(series, axis=1).transpose()
             tables[name] = table.map(str)
