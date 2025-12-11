@@ -24,6 +24,9 @@ from evo_schemas import schema_lookup
 from evo_schemas.objects import DownholeCollection_V1_3_1
 
 from python_ags4 import AGS4
+from datetime import datetime
+from importlib.abc import Traversable
+from importlib.resources import as_file, files
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 import pandas as pd
@@ -106,17 +109,13 @@ def _downhole_to_ags_groups(
         index=hole_idx,
     )
 
-    unit = pd.DataFrame(
-        {
-            "UNIT_UNIT": [dhc.distance_unit or "m"],
-            "UNIT_DESC": [dhc.distance_unit or "Metre"],
-        }
-    )
-    ags_type = pd.concat([pd.Series({"TYPE_TYPE": t, "TYPE_DESC": d}) for t, d in [("X", "Text")]], axis=1).transpose()
-
-    abbr = pd.concat(
-        [pd.Series({"ABBR_HDNG": h, "ABBR_CODE": c, "ABBR_DESC": d}) for h, c, d in [data_fields]], axis=1
-    ).transpose()
+    # Needs to be applied per table somehow
+    # unit = pd.DataFrame(
+    #     {
+    #         "UNIT_UNIT": [dhc.distance_unit or "m"],
+    #         "UNIT_DESC": [dhc.distance_unit or "Metre"],
+    #     }
+    # )
 
     hole_id = hole_id.to_pandas()
     geol = []
@@ -173,6 +172,17 @@ def _downhole_to_ags_groups(
                     geol.append(pd.Series(entry_geol))
                     scpp.append(pd.Series(entry_scpp))
 
+    tran = pd.DataFrame(
+        {
+            "TRAN_ISNO": ["1"],
+            "TRAN_DATE": [datetime.today().strftime("%Y-%m-%d")],
+            "TRAN_PROD": ["Evo Data Converters"],
+            "TRAN_STAT": ["Final"],
+            "TRAN_DESC": ["Export of Downhole Collection from Evo to AGS 4.1 file"],
+            "TRAN_AGS": ["4.1"],
+            "TRAN_RECV": ["Unknown"],
+        }
+    )
     proj = pd.DataFrame(
         {
             "HEADING": [
@@ -198,24 +208,39 @@ def _downhole_to_ags_groups(
             ],
         }
     )
+
+    # Fetch static tables from standard dictionary
+    static_tables = {}
+    static_headings = {}
+
+    try:
+        dict_file: Traversable = files("python_ags4") / "Standard_dictionary_v4_1_1.ags"
+        with as_file(dict_file) as path:
+            static_tables, static_headings = AGS4.AGS4_to_dataframe(path)
+    except (FileNotFoundError, OSError) as e:
+        logger.warning(f"Could not load standard AGS dictionary: {e}")
+
     tables = {
         "PROJ": proj.map(str),
         "LOCA": loca.map(str),
-        "UNIT": unit.map(str),
-        "TYPE": ags_type.map(str),
+        "TRAN": tran.map(str),
     }
     headings = {
         "PROJ": proj.columns.to_list(),
         "LOCA": loca.columns.to_list(),
-        "UNIT": unit.columns.to_list(),
-        "TYPE": ags_type.columns.to_list(),
+        "TRAN": tran.columns.to_list(),
     }
 
-    for name, series in [("ABBR", abbr), ("GEOL", geol), ("SCPG", scpg), ("SCPP", scpp), ("SCPT", scpt)]:
+    for name, series in [("GEOL", geol), ("SCPG", scpg), ("SCPP", scpp), ("SCPT", scpt)]:
         if series:
             table = pd.concat(series, axis=1).transpose()
             tables[name] = table.map(str)
             headings[name] = table.columns.to_list()
+
+    for key in ["ABBR", "UNIT", "TYPE"]:
+        if key in static_tables and not static_tables[key].empty:
+            tables[key] = static_tables[key].map(str)
+            headings[key] = static_headings[key]
 
     return (tables, headings)
 
