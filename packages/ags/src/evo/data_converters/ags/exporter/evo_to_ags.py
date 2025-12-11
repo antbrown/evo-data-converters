@@ -108,8 +108,8 @@ def _downhole_to_ags_groups(
 
     unit = pd.DataFrame(
         {
-            "UNIT_UNIT": dhc.distance_unit or "m",
-            "UNIT_DESC": dhc.distance_unit or "Metre",
+            "UNIT_UNIT": [dhc.distance_unit or "m"],
+            "UNIT_DESC": [dhc.distance_unit or "Metre"],
         }
     )
     ags_type = pd.concat([pd.Series({"TYPE_TYPE": t, "TYPE_DESC": d}) for t, d in [("X", "Text")]], axis=1).transpose()
