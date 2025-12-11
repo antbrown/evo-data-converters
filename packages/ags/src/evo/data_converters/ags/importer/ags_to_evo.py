@@ -80,13 +80,16 @@ def convert_ags(
         logger.error("Failed to parse AGS file(s): %s", e)
         return []
 
+    # Use first imported file's details by default.
+    default_ags_context = ags_contexts[0]
+
     default_tags: dict[str, str] = {
         "Source": "AGS files (via Evo Data Converters)",
         "Stage": "Experimental",
         "InputType": "AGS",
-        "Source Filename": filepath.split("/")[-1],
-        "AGS:PROJ:PROJ_ID": ags_context.project_id,
-        "AGS:PROJ:PROJ_NAME": ags_context.project_name,
+        "Source Filename(s)": ", ".join(filepaths),
+        "AGS:PROJ:PROJ_ID": default_ags_context.project_id,
+        "AGS:PROJ:PROJ_NAME": default_ags_context.project_name,
     }
     merged_tags: dict[str, str] = {**default_tags, **(tags or {})}
 
