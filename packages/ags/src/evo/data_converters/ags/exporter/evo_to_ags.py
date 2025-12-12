@@ -231,7 +231,24 @@ def _downhole_to_ags_groups(
         "TRAN": tran.columns.to_list(),
     }
 
-    for name, series in [("GEOL", geol), ("SCPG", scpg), ("SCPP", scpp), ("SCPT", scpt)]:
+    # Add header and prefix rows to these tables.
+    prefix_tables = [
+        ("LOCA", loca),
+        # ("TRAN", tran),
+        # ("SCPG", scpg),
+        # ("SCPP", scpp),
+        # ("SCPT", scpt),
+    ]
+    for name, series in prefix_tables:
+        tables[name] = _ags_prefix_dataframe(series, name)
+
+    transpose_tables = [
+        ("GEOL", geol),
+        ("SCPG", scpg),
+        ("SCPP", scpp),
+        ("SCPT", scpt),
+    ]
+    for name, series in transpose_tables:
         if series:
             table = pd.concat(series, axis=1).transpose()
             tables[name] = table.map(str)
@@ -243,6 +260,31 @@ def _downhole_to_ags_groups(
             headings[key] = static_headings[key]
 
     return (tables, headings)
+
+
+def _ags_prefix_dataframe(df: pd.DataFrame, name: str) -> pd.DataFrame:
+    """
+    Apply AGS4 required prefix rows (unit, type) then columns (heading) to a dataframe
+
+    @TODO Work out how to obtain appropriate UNIT and TYPE values for each row.
+    """
+    unit_row = pd.DataFrame([[""] * df.shape[1]], columns=df.columns)
+    type_row = pd.DataFrame([["X"] * df.shape[1]], columns=df.columns)
+    df = pd.concat(
+        [
+            unit_row,
+            type_row,
+            df,
+        ],
+        ignore_index=True,
+    )
+    num_rows = df.shape[0]
+    column_values = ["UNIT", "TYPE"] + ["DATA"] * (num_rows - 2)
+    df.insert(0, "HEADING", column_values)
+
+    # If I pprint.pp(df) here, the construction seems right.
+    # But AGS4 exports without those
+    return df
 
 
 def _export_obj(
