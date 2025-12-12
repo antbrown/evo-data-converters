@@ -28,6 +28,9 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
+          - "3.13"
+          # VTK isn't currently built for 3.14
+          # - "3.14"
         package:
           - common
           - vtk
