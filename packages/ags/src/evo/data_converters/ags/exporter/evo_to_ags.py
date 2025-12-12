@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 import asyncio
+
 import nest_asyncio
 
 from evo.data_converters.common import (
@@ -107,14 +108,6 @@ def _downhole_to_ags_groups(
         },
         index=hole_idx,
     )
-
-    # Needs to be applied per table somehow
-    # unit = pd.DataFrame(
-    #     {
-    #         "UNIT_UNIT": [dhc.distance_unit or "m"],
-    #         "UNIT_DESC": [dhc.distance_unit or "Metre"],
-    #     }
-    # )
 
     hole_id = hole_id.to_pandas()
     geol = []
@@ -231,17 +224,7 @@ def _downhole_to_ags_groups(
         "TRAN": tran.columns.to_list(),
     }
 
-    # Add header and prefix rows to these tables.
-    prefix_tables = [
-        ("LOCA", loca),
-        # ("TRAN", tran),
-        # ("SCPG", scpg),
-        # ("SCPP", scpp),
-        # ("SCPT", scpt),
-    ]
-    for name, series in prefix_tables:
-        tables[name] = _ags_prefix_dataframe(series, name)
-
+    # These tables are lists, and need to become dataframe
     transpose_tables = [
         ("GEOL", geol),
         ("SCPG", scpg),
@@ -253,6 +236,21 @@ def _downhole_to_ags_groups(
             table = pd.concat(series, axis=1).transpose()
             tables[name] = table.map(str)
             headings[name] = table.columns.to_list()
+        # else:
+        #     tables[name] = series
+
+    # Add header and prefix rows to some tables
+    prefix_tables = [
+        ("LOCA", loca),
+        ("TRAN", tran),
+        ("SCPG", tables["SCPG"]),
+        # ("SCPP", tables["SCPP"]),
+        ("SCPT", tables["SCPT"]),
+    ]
+    for name, series in prefix_tables:
+        if not series.empty:
+            tables[name] = _ags_prefix_dataframe(series, name, static_tables=static_tables)
+            headings[name] = ["HEADING"] + headings[name]
 
     for key in ["ABBR", "UNIT", "TYPE"]:
         if key in static_tables and not static_tables[key].empty:
@@ -262,14 +260,69 @@ def _downhole_to_ags_groups(
     return (tables, headings)
 
 
-def _ags_prefix_dataframe(df: pd.DataFrame, name: str) -> pd.DataFrame:
+def _ags_column_unit_type(
+    table_name: str,
+    column_name: str,
+    static_tables: dict[str, pd.DataFrame],
+) -> tuple[str, str]:
     """
-    Apply AGS4 required prefix rows (unit, type) then columns (heading) to a dataframe
+    Provide an AGS4 unit and type (table, column) from AGS standard dictionary tables.
 
-    @TODO Work out how to obtain appropriate UNIT and TYPE values for each row.
+    Example: for table 'TRAN' column 'TRAN_ISNO':
+      - UNIT is in static_tables['TRAN'] row where HEADING == 'UNIT'
+      - TYPE is in static_tables['TRAN'] row where HEADING == 'TYPE'
     """
-    unit_row = pd.DataFrame([[""] * df.shape[1]], columns=df.columns)
-    type_row = pd.DataFrame([["X"] * df.shape[1]], columns=df.columns)
+    default_unit = ""
+    default_type = "X"
+
+    # Name matches
+    match column_name:
+        case "LOCA_ID" | "PROJ_ID":
+            return ("", "ID")
+
+    # Dictionary lookup
+    table = static_tables.get(table_name)
+    if table is None or table.empty:
+        return default_unit, default_type
+
+    if "HEADING" not in table.columns or column_name not in table.columns:
+        return default_unit, default_type
+
+    try:
+        unit_series = table.loc[table["HEADING"].eq("UNIT"), column_name]
+        type_series = table.loc[table["HEADING"].eq("TYPE"), column_name]
+
+        lookup_unit = str(unit_series.iloc[0]) if not unit_series.empty else default_unit
+        lookup_type = str(type_series.iloc[0]) if not type_series.empty else default_type
+
+        return lookup_unit, lookup_type
+    except Exception:
+        return default_unit, default_type
+
+
+def _ags_prefix_dataframe(
+    df: pd.DataFrame,
+    table_name: str,
+    static_tables: dict[str, pd.DataFrame] | None = None,
+) -> pd.DataFrame:
+    """
+    Apply AGS4 required prefix rows (UNIT, TYPE) then HEADING column to a dataframe.
+
+    UNIT/TYPE values are looked up from `static_tables[table_name]` if provided.
+    """
+    static_tables = static_tables or {}
+
+    # Build UNIT/TYPE rows per column (looked up from standard dictionary)
+    unit_values: list[str] = []
+    type_values: list[str] = []
+    for col in df.columns:
+        col_unit, col_type = _ags_column_unit_type(table_name, str(col), static_tables=static_tables)
+        unit_values.append(col_unit or "X")
+        type_values.append(col_type)
+
+    unit_row = pd.DataFrame([unit_values], columns=df.columns)
+    type_row = pd.DataFrame([type_values], columns=df.columns)
+
     df = pd.concat(
         [
             unit_row,
@@ -279,11 +332,11 @@ def _ags_prefix_dataframe(df: pd.DataFrame, name: str) -> pd.DataFrame:
         ignore_index=True,
     )
     num_rows = df.shape[0]
+
+    # Prepend HEADING column before data
     column_values = ["UNIT", "TYPE"] + ["DATA"] * (num_rows - 2)
     df.insert(0, "HEADING", column_values)
 
-    # If I pprint.pp(df) here, the construction seems right.
-    # But AGS4 exports without those
     return df
 
 
