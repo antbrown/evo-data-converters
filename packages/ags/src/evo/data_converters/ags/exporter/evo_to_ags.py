@@ -61,7 +61,6 @@ def _downhole_to_ags_groups(
     object_id: UUID,
     object_version: Optional[str],
     dhc: DownholeCollection_V1_3_1,
-    data_fields: list((str, str, str)) = [],
 ) -> (pd.DataFrame, pd.DataFrame):
     holes = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.hole_id.table.as_dict()))
     coords = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.coordinates.as_dict()))
@@ -183,6 +182,7 @@ def _downhole_to_ags_groups(
             "TRAN_RECV": ["Unknown"],
         }
     )
+
     proj = pd.DataFrame(
         {
             "HEADING": [
