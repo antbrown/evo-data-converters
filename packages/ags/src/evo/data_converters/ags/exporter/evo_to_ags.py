@@ -252,7 +252,7 @@ def _downhole_to_ags_groups(
             tables[name] = _ags_prefix_dataframe(series, name, static_tables=static_tables)
             headings[name] = ["HEADING"] + headings[name]
 
-    for key in ["ABBR", "UNIT", "TYPE"]:
+    for key in ["ABBR", "DICT", "UNIT", "TYPE"]:
         if key in static_tables and not static_tables[key].empty:
             tables[key] = static_tables[key].map(str)
             headings[key] = static_headings[key]
