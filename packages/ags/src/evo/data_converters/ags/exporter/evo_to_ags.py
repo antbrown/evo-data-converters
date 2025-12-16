@@ -288,36 +288,29 @@ def _ags_column_unit_type(
     """
     Provide an AGS4 unit and type (table, column) from AGS standard dictionary tables.
 
-    Example: for table 'TRAN' column 'TRAN_ISNO':
-      - UNIT is in static_tables['TRAN'] row where HEADING == 'UNIT'
-      - TYPE is in static_tables['TRAN'] row where HEADING == 'TYPE'
+    Example: for table 'SCPT' column 'SCPT_RES':
+      - Look in static DICT table
+      - Find row where DICT_GRP == 'SCPT' and DICT_HDNG == 'SCPT_RES'
+      - Return DICT_UNIT and DICT_DTYP values: MPa, 3DP
     """
     default_unit = ""
     default_type = "X"
 
-    # Name matches
-    match column_name:
-        case "LOCA_ID" | "PROJ_ID":
-            return ("", "ID")
+    dict_table = static_tables.get("DICT")
+    if dict_table is not None and not dict_table.empty:
+        required_cols = {"DICT_GRP", "DICT_HDNG", "DICT_UNIT", "DICT_DTYP"}
+        if required_cols.issubset(dict_table.columns):
+            try:
+                mask = (dict_table["DICT_GRP"] == table_name) & (dict_table["DICT_HDNG"] == column_name)
+                dict_row = dict_table.loc[mask]
 
-    # Dictionary lookup
-    table = static_tables.get(table_name)
-    if table is None or table.empty:
-        return default_unit, default_type
-
-    if "HEADING" not in table.columns or column_name not in table.columns:
-        return default_unit, default_type
-
-    try:
-        unit_series = table.loc[table["HEADING"].eq("UNIT"), column_name]
-        type_series = table.loc[table["HEADING"].eq("TYPE"), column_name]
-
-        lookup_unit = str(unit_series.iloc[0]) if not unit_series.empty else default_unit
-        lookup_type = str(type_series.iloc[0]) if not type_series.empty else default_type
-
-        return lookup_unit, lookup_type
-    except Exception:
-        return default_unit, default_type
+                if not dict_row.empty:
+                    dict_unit = str(dict_row["DICT_UNIT"].iloc[0])
+                    dict_type = str(dict_row["DICT_DTYP"].iloc[0])
+                    return dict_unit, dict_type
+            except Exception:
+                pass  # Fall through to defaults
+    return default_unit, default_type
 
 
 def _ags_prefix_dataframe(
