@@ -64,6 +64,13 @@ def _downhole_to_ags_groups(
     dhc: DownholeCollection_V1_3_1,
 ) -> (pd.DataFrame, pd.DataFrame):
     holes = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.hole_id.table.as_dict()))
+    hole_collar_attrs = {
+        a.name: asyncio.run(data_client.download_table(object_id, object_version, a.values.as_dict()))
+        .column("data")
+        .to_pylist()
+        for a in dhc.location.attributes
+    }
+
     coords = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.coordinates.as_dict()))
     distance_collections = [c for c in dhc.collections if c.collection_type == "distance"]
     interval_collections = [c for c in dhc.collections if c.collection_type == "interval"]
@@ -110,8 +117,18 @@ def _downhole_to_ags_groups(
     )
 
     hole_id = hole_id.to_pandas()
+
+    scpg = [
+        pd.Series(
+            {
+                key.split(":")[0] if key == "LOCA_ID" else key: vals[hc]
+                for key, vals in hole_collar_attrs.items()
+                if key in ["LOCA_ID", "FILE_FSET"] or key.startswith("SCPG")
+            }
+        )
+        for hc in range(len(hole_collar_attrs["LOCA_ID"]))
+    ]
     geol = []
-    scpg = []
     scpp = []
     scpt = []
 
@@ -120,7 +137,6 @@ def _downhole_to_ags_groups(
             row = holes["hole_index"] == hole_idx
             offset = holes.loc[row, "offset"].item()
             for test_n in range(holes.loc[row, "count"].item()):
-                entry_scpg = {"LOCA_ID": hole_id.loc[row].item(), "SCPG_TESN": test_n}
                 entry_scpt = {
                     "LOCA_ID": hole_id.loc[row].item(),
                     "SCPG_TESN": test_n,
@@ -128,12 +144,9 @@ def _downhole_to_ags_groups(
                 }
 
                 for title, col in data.items():
-                    if title.startswith("SCPG") and title not in ["SCPG_TESN"]:
-                        entry_scpg[title] = col.at[test_n + offset, "data"]
-                    elif title.startswith("SCPT") and title not in ["SCPT_DPTH"]:
+                    if title.startswith("SCPT") and title not in ["SCPT_DPTH"]:
                         entry_scpt[title] = col.at[test_n + offset, "data"]
 
-                scpg.append(pd.Series(entry_scpg))
                 scpt.append(pd.Series(entry_scpt))
 
     for holes, from_to, data in interval_measurements:
