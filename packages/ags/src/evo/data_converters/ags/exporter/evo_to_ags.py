@@ -28,7 +28,7 @@ from python_ags4 import AGS4
 from datetime import datetime
 from importlib.abc import Traversable
 from importlib.resources import as_file, files
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Iterable
 from uuid import UUID
 import pandas as pd
 import pyarrow.compute as pc
@@ -58,6 +58,16 @@ class UnsupportedObjectException(Exception):
 logger = evo.logging.getLogger("data_converters")
 
 
+def _fetch_downhole_attrs(
+    data_client: ObjectDataClient, object_id: UUID, object_version: Optional[str], attrs: Iterable[object]
+) -> dict[str, object]:
+    fetched_vals = asyncio.run(
+        asyncio.gather(*[data_client.download_table(object_id, object_version, a.values.as_dict()) for a in attrs])
+    )
+    fetched_attrs = dict(zip(map(lambda v: v.name, attrs), fetched_vals))
+    return fetched_attrs
+
+
 def _downhole_to_ags_groups(
     data_client: ObjectDataClient,
     object_id: UUID,
@@ -66,10 +76,8 @@ def _downhole_to_ags_groups(
 ) -> (pd.DataFrame, pd.DataFrame):
     holes = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.hole_id.table.as_dict()))
     hole_collar_attrs = {
-        a.name: asyncio.run(data_client.download_table(object_id, object_version, a.values.as_dict()))
-        .column("data")
-        .to_pylist()
-        for a in dhc.location.attributes
+        k: v.column("data").to_pylist()
+        for k, v in _fetch_downhole_attrs(data_client, object_id, object_version, dhc.location.attributes).items()
     }
 
     coords = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.coordinates.as_dict()))
@@ -80,10 +88,8 @@ def _downhole_to_ags_groups(
             asyncio.run(data_client.download_table(object_id, object_version, m.holes.as_dict())).to_pandas(),
             asyncio.run(data_client.download_table(object_id, object_version, m.distance.values.as_dict())).to_pandas(),
             {
-                attr.name: asyncio.run(
-                    data_client.download_table(object_id, object_version, attr.values.as_dict())
-                ).to_pandas()
-                for attr in m.distance.attributes
+                k: v.to_pandas()
+                for k, v in _fetch_downhole_attrs(data_client, object_id, object_version, m.distance.attributes).items()
             },
         )
         for m in distance_collections
@@ -95,10 +101,8 @@ def _downhole_to_ags_groups(
                 data_client.download_table(object_id, object_version, c.from_to.intervals.start_and_end.as_dict())
             ).to_pandas(),
             {
-                attr.name: asyncio.run(
-                    data_client.download_table(object_id, object_version, attr.values.as_dict())
-                ).to_pandas()
-                for attr in c.from_to.attributes
+                k: v.to_pandas()
+                for k, v in _fetch_downhole_attrs(data_client, object_id, object_version, c.from_to.attributes).items()
             },
         )
         for c in interval_collections
