@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
 def convert_gef(
     filepaths: list[str | Path],
+    epsg_code: int | None = None,
     evo_workspace_metadata: EvoWorkspaceMetadata | None = None,
     service_manager_widget: "ServiceManagerWidget | None" = None,
     name: str | None = None,
@@ -51,6 +52,7 @@ def convert_gef(
     - service_manager_widget was passed to this function.
 
     :param filepaths: List of Paths to the GEF files.
+    :param epsg_code: (Optional) The default EPSG code to use when creating a Coordinate Reference System object.
     :param evo_workspace_metadata: (Optional) Evo workspace metadata.
     :param service_manager_widget: (Optional) Service Manager Widget for use in jupyter notebooks.
     :param name (Optional) Name for DownholeCollection, auto-generated from hole IDs if not provided.
@@ -74,7 +76,9 @@ def convert_gef(
 
     gef_cpt_data = parse_gef_files(filepaths)
     downhole_collection = create_from_parsed_gef_cpts(gef_cpt_data, name=name)
-    converter = DownholeCollectionToGeoscienceObject(dhc=downhole_collection, data_client=data_client)
+    converter = DownholeCollectionToGeoscienceObject(
+        dhc=downhole_collection, data_client=data_client, epsg_code=epsg_code
+    )
     geoscience_object = converter.convert()
 
     if geoscience_object:
