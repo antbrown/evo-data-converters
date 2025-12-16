@@ -31,6 +31,7 @@ from importlib.resources import as_file, files
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 import pandas as pd
+import pyarrow.compute as pc
 
 import evo.logging
 
@@ -104,7 +105,8 @@ def _downhole_to_ags_groups(
     ]
 
     hole_idx = holes.column("key")
-    hole_id = holes.column("value")
+    hole_id = pc.split_pattern(holes.column("value"), ":", max_splits=1, reverse=True)
+    hole_id = pc.list_element(hole_id, 0)
 
     loca = pd.DataFrame(
         {
