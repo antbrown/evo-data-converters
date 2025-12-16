@@ -123,13 +123,14 @@ def _downhole_to_ags_groups(
     scpg = [
         pd.Series(
             {
-                key: vals[hc]
+                key.split(":")[0] if key == "LOCA_ID" else key: vals[hc]
                 for key, vals in hole_collar_attrs.items()
                 if key in ["LOCA_ID", "FILE_FSET"] or key.startswith("SCPG")
             }
         )
         for hc in range(len(hole_collar_attrs["LOCA_ID"]))
     ]
+
     geol = []
     scpp = []
     scpt = []
