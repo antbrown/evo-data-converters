@@ -815,7 +815,7 @@ dev = [
 
 [[package]]
 name = "evo-data-converters-common"
-version = "0.2.4"
+version = "0.3.1"
 source = { editable = "packages/common" }
 dependencies = [
     { name = "aiohttp" },
@@ -825,6 +825,7 @@ dependencies = [
     { name = "nest-asyncio" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "pint-pandas" },
     { name = "pyarrow" },
     { name = "pyproj", version = "3.7.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pyproj", version = "3.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -852,6 +853,7 @@ requires-dist = [
     { name = "nest-asyncio" },
     { name = "numpy", specifier = "==1.26.3" },
     { name = "pandas", specifier = ">=2.3.1" },
+    { name = "pint-pandas", specifier = ">=0.7.1" },
     { name = "pyarrow" },
     { name = "pyproj", specifier = ">=3.7.1" },
     { name = "requests" },

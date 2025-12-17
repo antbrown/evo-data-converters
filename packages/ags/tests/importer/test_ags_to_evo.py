@@ -19,7 +19,7 @@ from evo.data_converters.ags.importer.ags_to_evo import convert_ags
 from evo.objects.data import ObjectMetadata
 
 
-@skipIf(True, "Skipping test")
+@skipIf(False, "Skipping test")
 def test_should_convert_ags_file_without_publish(evo_metadata, valid_ags_1a_path):
     """Integration: converts an AGS file to a geoscience object without publishing."""
     result = asyncio.run(convert_ags(filepaths=[valid_ags_1a_path], evo_workspace_metadata=evo_metadata))
@@ -34,7 +34,7 @@ def test_should_convert_ags_file_without_publish(evo_metadata, valid_ags_1a_path
     assert obj_metadata.tags["InputType"] == "AGS"
 
 
-@skipIf(True, "Skipping test")
+@skipIf(False, "Skipping test")
 @patch("evo.data_converters.ags.importer.ags_to_evo.publish_geoscience_objects")
 def test_should_publish_with_hub_url(mock_publish, evo_metadata_with_hub, valid_ags_1a_path):
     """Integration: publishes when hub_url is provided (network calls mocked)."""
@@ -56,7 +56,7 @@ def test_should_publish_with_hub_url(mock_publish, evo_metadata_with_hub, valid_
     assert published_obj.tags["InputType"] == "AGS"
 
 
-@skipIf(True, "Skipping test")
+@skipIf(False, "Skipping test")
 def test_should_add_custom_tags(evo_metadata, valid_ags_1a_path):
     """Integration: conversion succeeds with custom tags supplied (tags applied internally)."""
     custom_tags = {"CustomTag": "CustomValue", "AnotherTag": "AnotherValue"}
@@ -83,7 +83,7 @@ def test_should_handle_parse_error(evo_metadata, not_ags_path, caplog):
     assert "AGS Format Rule 3" in caplog.text
 
 
-@skipIf(True, "Skipping test")
+@skipIf(False, "Skipping test")
 def test_duplicate_loca_id_across_files_raises_warning(evo_metadata, valid_ags_2a_path, invalid_ags_2b_path, caplog):
     """Integration: multiple ags files with warnings should be imported"""
     result = asyncio.run(
@@ -102,7 +102,7 @@ def test_duplicate_loca_id_across_files_raises_warning(evo_metadata, valid_ags_2
         assert warning_message in caplog.text
 
 
-@skipIf(True, "Skipping test")
+@skipIf(False, "Skipping test")
 def test_convert_ags_with_multiple_files_from_different_projects(
     evo_metadata, valid_ags_1a_path, valid_ags_2a_path, caplog
 ):
@@ -117,7 +117,7 @@ def test_convert_ags_with_multiple_files_from_different_projects(
     assert all(isinstance(obj, DownholeCollection_V1_3_1) for obj in result)
 
 
-@skipIf(True, "Skipping test")
+@skipIf(False, "Skipping test")
 def test_convert_ags_with_multiple_files_same_project(evo_metadata, valid_ags_1a_path, valid_ags_1b_path):
     """Integration: Test multiple files from same PROJ_ID merge into single DownholeCollection."""
     result = asyncio.run(
@@ -144,7 +144,7 @@ def test_convert_ags_with_multiple_files_same_project(evo_metadata, valid_ags_1a
     assert downhole_collection.coordinate_reference_system.epsg_code == 27700
 
 
-@skipIf(True, "Skipping test")
+@skipIf(False, "Skipping test")
 def test_convert_ags_with_mixed_projects(evo_metadata, valid_ags_1a_path, valid_ags_1b_path, valid_ags_2a_path):
     """Integration: Test mixed PROJ_IDs merge same projects and separates different ones."""
     result = asyncio.run(
