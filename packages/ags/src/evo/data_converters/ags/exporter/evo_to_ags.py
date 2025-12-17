@@ -75,12 +75,15 @@ def _downhole_to_ags_groups(
     dhc: DownholeCollection_V1_3_1,
 ) -> (pd.DataFrame, pd.DataFrame):
     holes = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.hole_id.table.as_dict()))
+    # Collect hole collar data for SCPG
     hole_collar_attrs = {
         k: v.column("data").to_pylist()
         for k, v in _fetch_downhole_attrs(data_client, object_id, object_version, dhc.location.attributes).items()
     }
 
     coords = asyncio.run(data_client.download_table(object_id, object_version, dhc.location.coordinates.as_dict()))
+
+    # Match distance and interval data to relevent measurements and locations
     distance_collections = [c for c in dhc.collections if c.collection_type == "distance"]
     interval_collections = [c for c in dhc.collections if c.collection_type == "interval"]
     measurements = [
@@ -109,6 +112,7 @@ def _downhole_to_ags_groups(
     ]
 
     hole_idx = holes.column("key")
+    # Strip hole index from hole id
     hole_id = pc.split_pattern(holes.column("value"), ":", max_splits=1, reverse=True)
     hole_id = pc.list_element(hole_id, 0)
 
@@ -121,8 +125,6 @@ def _downhole_to_ags_groups(
         },
         index=hole_idx,
     )
-
-    hole_id = hole_id.to_pandas()
 
     scpg = [
         pd.Series(
@@ -139,6 +141,7 @@ def _downhole_to_ags_groups(
     scpp = []
     scpt = []
 
+    # Fill hole data for each test number
     for holes, depth, data in measurements:
         for hole_idx in holes["hole_index"]:
             row = holes["hole_index"] == hole_idx
@@ -156,6 +159,7 @@ def _downhole_to_ags_groups(
 
                 scpt.append(pd.Series(entry_scpt))
 
+    # Fill hole data for each test interval
     for holes, from_to, data in interval_measurements:
         for hole_idx in holes["hole_index"]:
             row = holes["hole_index"] == hole_idx
