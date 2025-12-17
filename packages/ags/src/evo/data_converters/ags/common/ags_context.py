@@ -13,6 +13,8 @@ from io import StringIO
 from pathlib import Path
 import evo.logging
 import pandas as pd
+
+# Initialise pint unit system, required for pandas extensions (see also https://github.com/pandas-dev/pandas/issues/29774)
 from pint_pandas import PintType as _  # noqa: F401
 from .pandas_utils import coerce_to_object_int
 from .ags_spec import MEASUREMENT_UNITS
