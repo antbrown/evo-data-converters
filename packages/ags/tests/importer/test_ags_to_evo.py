@@ -33,7 +33,7 @@ def test_should_convert_ags_file_without_publish(evo_metadata, valid_ags_1a_path
 
 
 @skipIf(False, "Skipping test")
-@patch("evo.data_converters.ags.importer.ags_to_evo.publish_geoscience_objects")
+@patch("evo.data_converters.ags.importer.ags_to_evo.publish_geoscience_objects_sync")
 def test_should_publish_with_hub_url(mock_publish, evo_metadata_with_hub, valid_ags_1a_path):
     """Integration: publishes when hub_url is provided (network calls mocked)."""
     mock_metadata = [Mock(spec=ObjectMetadata)]

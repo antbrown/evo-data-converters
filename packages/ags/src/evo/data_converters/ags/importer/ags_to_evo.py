@@ -20,7 +20,7 @@ from evo.data_converters.ags.common import AgsContext, AgsFileInvalidException
 from evo.data_converters.common import (
     EvoWorkspaceMetadata,
     create_evo_object_service_and_data_client,
-    publish_geoscience_objects,
+    publish_geoscience_objects_sync,
 )
 from evo.data_converters.common.objects import DownholeCollection, DownholeCollectionToGeoscienceObject
 from evo.objects.data import ObjectMetadata
@@ -98,7 +98,7 @@ def convert_ags(
 
     if publish_objects:
         logger.debug("Publishing Geoscience Object")
-        object_metadata = publish_geoscience_objects(
+        object_metadata = publish_geoscience_objects_sync(
             object_models=geoscience_objects,
             object_service_client=object_service_client,
             data_client=data_client,
