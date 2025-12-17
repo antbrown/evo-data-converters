@@ -9,20 +9,32 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from datetime import date, datetime
+
 import pandas as pd
 import pyarrow as pa
-from datetime import datetime, date
-
 from evo_schemas.components import (
     BoolAttribute_V1_1_0 as BoolAttribute,
+)
+from evo_schemas.components import (
     CategoryAttribute_V1_1_0 as CategoryAttribute,
+)
+from evo_schemas.components import (
     ContinuousAttribute_V1_1_0 as ContinuousAttribute,
+)
+from evo_schemas.components import (
     DateTimeAttribute_V1_1_0 as DateTimeAttribute,
+)
+from evo_schemas.components import (
     IntegerAttribute_V1_1_0 as IntegerAttribute,
+)
+from evo_schemas.components import (
     StringAttribute_V1_1_0 as StringAttribute,
 )
+from evo_schemas.elements.unit_energy_per_volume import UnitEnergyPerVolume_V1_0_1_UnitCategories as UnitEnergyPerVolume
+from evo_schemas.elements.unit_plane_angle import UnitPlaneAngle_V1_0_1_UnitCategories as UnitPlaneAngle
 
-from evo.data_converters.common.objects.attributes import AttributeFactory, PyArrowTableFactory, DataType
+from evo.data_converters.common.objects.attributes import AttributeFactory, AttributeType, PyArrowTableFactory
 
 
 class TestPyArrowTableFactory:
@@ -30,7 +42,7 @@ class TestPyArrowTableFactory:
 
     def test_create_continuous_table(self) -> None:
         series = pd.Series([1.5, 2.5, pd.NA, 3.5])
-        table = PyArrowTableFactory.create_table(series, DataType.CONTINUOUS)
+        table = PyArrowTableFactory.create_table(series, AttributeType.CONTINUOUS)
 
         assert table.num_columns == 1
         assert table.column_names == ["data"]
@@ -41,7 +53,7 @@ class TestPyArrowTableFactory:
 
     def test_create_string_table(self) -> None:
         series = pd.Series(["alice", "bob", pd.NA, "edith"])
-        table = PyArrowTableFactory.create_table(series, DataType.STRING)
+        table = PyArrowTableFactory.create_table(series, AttributeType.STRING)
 
         assert table.num_columns == 1
         assert table.column_names == ["data"]
@@ -66,6 +78,7 @@ class TestAttributeFactory:
         assert attribute.values is not None
         assert attribute.nan_description is not None
         assert attribute.nan_description.values == []
+        assert attribute.attribute_description is None
 
     def test_create_continuous_attribute_with_nan_values(self, mock_data_client) -> None:
         """Test ContinuousAttribute with custom NaN values."""
@@ -76,6 +89,7 @@ class TestAttributeFactory:
 
         assert isinstance(attribute, ContinuousAttribute)
         assert attribute.nan_description.values == [-999.0, -9999.0]
+        assert attribute.attribute_description is None
 
     def test_create_continuous_from_mixed_integer_float(self, mock_data_client) -> None:
         """Test that mixed integer-float data creates ContinuousAttribute."""
@@ -84,6 +98,7 @@ class TestAttributeFactory:
         attribute = AttributeFactory.create("values", series, mock_data_client)
 
         assert isinstance(attribute, ContinuousAttribute)
+        assert attribute.attribute_description is None
 
     def test_create_string_attribute(self, mock_data_client) -> None:
         """Test creating a StringAttribute."""
@@ -96,6 +111,7 @@ class TestAttributeFactory:
         assert attribute.name == "engineer"
         assert attribute.values is not None
         assert not hasattr(attribute, "nan_description")
+        assert attribute.attribute_description is None
 
     def test_create_string_attribute_unicode(self, mock_data_client) -> None:
         """Test StringAttribute with unicode strings."""
@@ -104,6 +120,7 @@ class TestAttributeFactory:
         attribute = AttributeFactory.create("notes", series, mock_data_client)
 
         assert isinstance(attribute, StringAttribute)
+        assert attribute.attribute_description is None
 
     def test_create_integer_attribute(self, mock_data_client) -> None:
         """Test creating an IntegerAttribute."""
@@ -117,6 +134,7 @@ class TestAttributeFactory:
         assert attribute.values is not None
         assert attribute.nan_description is not None
         assert attribute.nan_description.values == []
+        assert attribute.attribute_description is None
 
     def test_create_integer_attribute_with_nan_values(self, mock_data_client) -> None:
         """Test IntegerAttribute with nan_values on the series attributes."""
@@ -127,6 +145,7 @@ class TestAttributeFactory:
 
         assert isinstance(attribute, IntegerAttribute)
         assert attribute.nan_description.values == [-999, -9999]
+        assert attribute.attribute_description is None
 
     def test_create_datetime_attribute_from_date(self, mock_data_client) -> None:
         """Test DateTimeAttribute from date objects."""
@@ -135,6 +154,7 @@ class TestAttributeFactory:
         attribute = AttributeFactory.create("date", series, mock_data_client)
 
         assert isinstance(attribute, DateTimeAttribute)
+        assert attribute.attribute_description is None
 
     def test_create_datetime_attribute_from_datetime(self, mock_data_client) -> None:
         """Test DateTimeAttribute from datetime objects."""
@@ -145,6 +165,7 @@ class TestAttributeFactory:
         attribute = AttributeFactory.create("datetime", series, mock_data_client)
 
         assert isinstance(attribute, DateTimeAttribute)
+        assert attribute.attribute_description is None
 
     def test_create_bool_attribute(self, mock_data_client) -> None:
         """Test creating a BoolAttribute."""
@@ -156,6 +177,7 @@ class TestAttributeFactory:
         assert attribute.key == "signed_off"
         assert attribute.name == "signed_off"
         assert attribute.values is not None
+        assert attribute.attribute_description is None
 
     def test_create_categorical_attribute(self, mock_data_client) -> None:
         """Test creating a CategoryAttribute from categorical data."""
@@ -170,6 +192,49 @@ class TestAttributeFactory:
         assert attribute.values is not None
         assert attribute.nan_description is not None
         assert attribute.nan_description.values == [-1]
+        assert attribute.attribute_description is None
+
+    def test_create_pint_MPa(self, mock_data_client) -> None:
+        """Test ContinuousAttribute with custom NaN values, and Pint MPa units."""
+        series = pd.Series([1.5, 2.5, -999.0, 3.5, 4.5]).astype("pint[MPa]")
+        series.attrs["nan_values"] = [-999.0, -9999.0]
+
+        attribute = AttributeFactory.create("pressure", series, mock_data_client)
+
+        assert isinstance(attribute, ContinuousAttribute)
+        assert attribute.nan_description.values == [-999.0, -9999.0]
+        assert attribute.attribute_description is not None
+        assert attribute.attribute_description.type is not None
+        assert attribute.attribute_description.type == UnitEnergyPerVolume.Unit_MPa
+
+    def test_create_integer_pint_degrees(self, mock_data_client) -> None:
+        """Test IntegerAttribute with nan_values on the series attributes."""
+        series = pd.Series([1, 2, -999, 3, 4]).astype("pint[degrees]")
+        series.attrs["nan_values"] = [-999, -9999]
+
+        attribute = AttributeFactory.create("angle", series, mock_data_client)
+
+        # Note that Pint arrays are floating point, not integer
+        assert isinstance(attribute, ContinuousAttribute)
+        assert attribute.nan_description.values == [-999, -9999]
+        assert attribute.attribute_description is not None
+        assert attribute.attribute_description.type is not None
+        assert attribute.attribute_description.type == UnitPlaneAngle.Unit_dega
+
+    def test_create_pint_au(self, mock_data_client) -> None:
+        """
+        Ensure that an AttributeDescription is not added if the PintType (au - Astronomical Unit)
+        does not have an equivalent EVO UNIT
+
+        """
+        series = pd.Series([1.5, 2.5, -999.0, 3.5, 4.5]).astype("pint[au]")
+        series.attrs["nan_values"] = [-999.0, -9999.0]
+
+        attribute = AttributeFactory.create("distance", series, mock_data_client)
+
+        assert isinstance(attribute, ContinuousAttribute)
+        assert attribute.nan_description.values == [-999.0, -9999.0]
+        assert attribute.attribute_description is None
 
     def test_create_unsupported_type_returns_none(self, mock_data_client) -> None:
         """Test that unsupported types return None."""
@@ -190,7 +255,7 @@ class TestAttributeFactory:
 
     def test_data_client_save_table_called_with_correct_args(self, mock_data_client) -> None:
         series = pd.Series([1.5, 2.5, 3.5])
-        table = PyArrowTableFactory.create_table(series, DataType.CONTINUOUS)
+        table = PyArrowTableFactory.create_table(series, AttributeType.CONTINUOUS)
 
         AttributeFactory.create("floats", series, mock_data_client)
 
@@ -214,6 +279,7 @@ class TestCategoricalAttributeFactory:
         assert attribute.name == "lithology"
         assert attribute.table is not None
         assert attribute.values is not None
+        assert attribute.attribute_description is None
 
     def test_create_categorical_attribute_with_nulls(self, mock_data_client) -> None:
         series = pd.Series(["sand", "clay", pd.NA, "rock", pd.NA], dtype="category")
@@ -223,6 +289,7 @@ class TestCategoricalAttributeFactory:
         assert isinstance(attribute, CategoryAttribute)
         assert attribute.nan_description is not None
         assert attribute.nan_description.values == [-1]
+        assert attribute.attribute_description is None
 
     def test_create_categorical_saves_lookup_table(self, mock_data_client) -> None:
         series = pd.Series(["A", "B", "C", "A", "B"], dtype="category")

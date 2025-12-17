@@ -9,38 +9,70 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from evo.objects.utils.data import ObjectDataClient
+import typing
+from dataclasses import dataclass
+from enum import Enum
+
+import pandas as pd
+import pyarrow as pa
+from evo_schemas.components import (
+    AttributeDescription_V1_0_1 as AttributeDescription,
+)
 from evo_schemas.components import (
     BoolAttribute_V1_1_0 as BoolAttribute,
+)
+from evo_schemas.components import (
     CategoryAttribute_V1_1_0 as CategoryAttribute,
+)
+from evo_schemas.components import (
     ContinuousAttribute_V1_1_0 as ContinuousAttribute,
+)
+from evo_schemas.components import (
     DateTimeAttribute_V1_1_0 as DateTimeAttribute,
+)
+from evo_schemas.components import (
     IntegerAttribute_V1_1_0 as IntegerAttribute,
+)
+from evo_schemas.components import (
     NanCategorical_V1_0_1 as NanCategorical,
+)
+from evo_schemas.components import (
     NanContinuous_V1_0_1 as NanContinuous,
+)
+from evo_schemas.components import (
     OneOfAttribute_V1_2_0_Item as OneOfAttribute_Item,
+)
+from evo_schemas.components import (
     StringAttribute_V1_1_0 as StringAttribute,
 )
 from evo_schemas.elements import (
     BoolArray1_V1_0_1 as BoolArray1,
+)
+from evo_schemas.elements import (
     DateTimeArray_V1_0_1 as DateTimeArray,
+)
+from evo_schemas.elements import (
     FloatArray1_V1_0_1 as FloatArray1,
+)
+from evo_schemas.elements import (
     IntegerArray1_V1_0_1 as IntegerArray1,
+)
+from evo_schemas.elements import (
     LookupTable_V1_0_1 as LookupTable,
+)
+from evo_schemas.elements import (
     StringArray_V1_0_1 as StringArray,
 )
+from pint_pandas import PintType
 
 import evo.logging
-import pandas as pd
-import pyarrow as pa
-import typing
-from enum import Enum
-from dataclasses import dataclass
+from evo.data_converters.common.objects.units import UnitMapper
+from evo.objects.utils.data import ObjectDataClient
 
 logger = evo.logging.getLogger("data_converters")
 
 
-class DataType(Enum):
+class AttributeType(Enum):
     """
     Enumeration mapping inferred attribute types to PyArrow data types.
 
@@ -59,7 +91,7 @@ class PyArrowTableFactory:
     """Factory for creating PyArrow tables from pandas Series with specified data types."""
 
     @staticmethod
-    def create_table(series: pd.Series, data_type: DataType) -> pa.Table:
+    def create_table(series: pd.Series, data_type: AttributeType) -> pa.Table:
         """
         Create a PyArrow table from a pandas Series with the specified data type.
 
@@ -83,7 +115,7 @@ class AttributeConfig:
     :param nan_class: Optional class for describing NaN values (None if not supported)
     """
 
-    data_type: DataType
+    data_type: AttributeType
     array_class: type
     attribute_class: type
     nan_class: type | None = None
@@ -99,35 +131,35 @@ class AttributeFactory:
     """
 
     CONTINUOUS_CONFIG: AttributeConfig = AttributeConfig(
-        data_type=DataType.CONTINUOUS,
+        data_type=AttributeType.CONTINUOUS,
         array_class=FloatArray1,
         attribute_class=ContinuousAttribute,
         nan_class=NanContinuous,
     )
 
     STRING_CONFIG: AttributeConfig = AttributeConfig(
-        data_type=DataType.STRING,
+        data_type=AttributeType.STRING,
         array_class=StringArray,
         attribute_class=StringAttribute,
         nan_class=None,
     )
 
     INTEGER_CONFIG: AttributeConfig = AttributeConfig(
-        data_type=DataType.INTEGER,
+        data_type=AttributeType.INTEGER,
         array_class=IntegerArray1,
         attribute_class=IntegerAttribute,
         nan_class=NanCategorical,
     )
 
     DATETIME_CONFIG: AttributeConfig = AttributeConfig(
-        data_type=DataType.DATETIME,
+        data_type=AttributeType.DATETIME,
         array_class=DateTimeArray,
         attribute_class=DateTimeAttribute,
         nan_class=NanCategorical,
     )
 
     BOOL_CONFIG: AttributeConfig = AttributeConfig(
-        data_type=DataType.BOOL,
+        data_type=AttributeType.BOOL,
         array_class=BoolArray1,
         attribute_class=BoolAttribute,
         nan_class=None,
@@ -172,6 +204,23 @@ class AttributeFactory:
             logger.debug(f"Got passed an empty series for attribute {name}, skipping Attribute creation.")
             return None
 
+        attribute_description = None
+        nan_values_list = list(series.attrs.get("nan_values", []))
+
+        # If series has a Pint Data Type, then we will need to create an AttributeDescription
+        # to pass the type info to EVO.
+        if isinstance(series.dtype, PintType):
+            unit = UnitMapper.lookup(series.dtype)
+            if unit is not None:
+                attribute_description = AttributeDescription(discipline="None", type=unit)
+            else:
+                logger.warning(f"Unable to map {series.dtype} to an EVO unit")
+
+            series = pd.Series(series.pint.magnitude, index=series.index, name=series.name)
+            # Note that Pint magnitudes are floats, so need to Map the nan_values to float
+            # otherwise the ContinuousAttribute constructor will fail, as it requires the nan_values be a float.
+            nan_values_list = [float(i) for i in nan_values_list]
+
         inferred_type: str = pd.api.types.infer_dtype(series, skipna=True)
 
         if inferred_type == "categorical":
@@ -186,7 +235,7 @@ class AttributeFactory:
             return None
 
         # PyArrow expects datetime columns to be of a specific dtype, not just inferred
-        if config.data_type == DataType.DATETIME:
+        if config.data_type == AttributeType.DATETIME:
             series = pd.to_datetime(series)
 
         # Create and save the pyarrow table
@@ -201,14 +250,14 @@ class AttributeFactory:
             "key": name,
             "name": name,
             "values": array_element,
+            "attribute_description": attribute_description,
         }
 
         # Add nan_description if the attribute supports it
         if config.nan_class is not None:
-            nan_values_list = list(series.attrs.get("nan_values", []))
             nan_values = (
                 [int(v) for v in nan_values_list]
-                if config.data_type in {DataType.INTEGER, DataType.DATETIME}
+                if config.data_type in {AttributeType.INTEGER, AttributeType.DATETIME}
                 else nan_values_list
             )
             attribute_kwargs["nan_description"] = config.nan_class(values=nan_values)

@@ -26,6 +26,8 @@ class ColumnMapping:
     - DEPTH_COLUMNS: Column names for point measurement depths (used by DistanceTable)
     - FROM_COLUMNS: Column names for interval start depths (used by IntervalTable)
     - TO_COLUMNS: Column names for interval end depths (used by IntervalTable)
+    - DIP_COLUMNS: Column names that contain dip values (angle down from horizontal in degrees)
+    - AZIMUTH_COLUMNS: Column names that contain azimuth values (bearing from North in degrees)
 
     Each attribute contains a list of possible column names to search for.
     """

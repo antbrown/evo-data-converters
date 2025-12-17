@@ -1,7 +1,7 @@
 [project]
 name = "evo-data-converters-common"
 description = "Python framework for building data converters between common geoscience data formats"
-version = "0.2.4"
+version = "0.3.1"
 requires-python = ">=3.10"
 license-files = ["LICENSE.md"]
 dynamic = ["readme"]
@@ -12,7 +12,7 @@ authors = [
 dependencies = [
     "aiohttp",
     "evo-sdk-common>=0.4.2",
-    "evo-objects>=0.1.0",
+    "evo-objects>=0.3.0",
     "evo-schemas>=2025.9.12",
     "nest_asyncio",
     "numpy==1.26.3",
@@ -22,6 +22,7 @@ dependencies = [
     "scipy",
     "pyproj>=3.7.1",
     "typing_extensions; python_version < '3.12'",
+    "pint-pandas>=0.7.1",
 ]
 
 [project.urls]
@@ -42,6 +43,9 @@ dev = [
 [tool.ruff]
 src = ["src", "tests"]
 line-length = 120
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP006"]
 
 [build-system]
 requires = ["hatchling", "hatch-fancy-pypi-readme"]
