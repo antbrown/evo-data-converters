@@ -126,6 +126,8 @@ def _downhole_to_ags_groups(
         index=hole_idx,
     )
 
+    hole_id = hole_id.to_pandas()
+
     scpg = [
         pd.Series(
             {
@@ -190,6 +192,7 @@ def _downhole_to_ags_groups(
 
     tran = pd.DataFrame(
         {
+            # TODO: Should we read this from the import? Or find some way to increment otherwise.
             "TRAN_ISNO": ["1"],
             "TRAN_DATE": [datetime.today().strftime("%Y-%m-%d")],
             "TRAN_PROD": ["Evo Data Converters"],
@@ -267,9 +270,9 @@ def _downhole_to_ags_groups(
     prefix_tables = [
         ("LOCA", loca),
         ("TRAN", tran),
-        ("SCPG", tables["SCPG"]),
-        # ("SCPP", tables["SCPP"]),
-        ("SCPT", tables["SCPT"]),
+        ("SCPG", tables.get("SCPG", pd.Series())),
+        ("SCPP", tables.get("SCPP", pd.Series())),
+        ("SCPT", tables.get("SCPT", pd.Series())),
     ]
     for name, series in prefix_tables:
         if not series.empty:
@@ -278,6 +281,7 @@ def _downhole_to_ags_groups(
 
     for key in ["ABBR", "DICT", "UNIT", "TYPE"]:
         if key in static_tables and not static_tables[key].empty:
+            # TODO: We need to handle type conversion better, change boolean to Y/N, etc. Check the spec for this
             tables[key] = static_tables[key].map(str)
             headings[key] = static_headings[key]
 
