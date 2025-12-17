@@ -206,12 +206,12 @@ def _downhole_to_ags_groups(
             "PROJ_ID": [
                 "",
                 "ID",
-                dhc.tags["AGS:PROJ:PROJ_ID"] or dhc.uuid,
+                dhc.tags.get("AGS:PROJ:PROJ_ID", dhc.uuid),
             ],
             "PROJ_NAME": [
                 "",
                 "X",
-                dhc.tags["AGS:PROJ:PROJ_NAME"] or dhc.name,
+                dhc.tags.get("AGS:PROJ:PROJ_NAME", dhc.name),
             ],
             "PROJ_MEMO": [
                 "",
