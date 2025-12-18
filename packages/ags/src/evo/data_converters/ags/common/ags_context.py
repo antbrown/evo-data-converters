@@ -186,6 +186,51 @@ class AgsContext:
             TO_COLUMNS=["GEOL_BASE", "SCPP_BASE"],
         )
 
+    @property
+    def project_id(self) -> str:
+        """Gets the AGS ID field
+
+        Fallback (e.g. StringIO): filename of AGS file.
+
+        :returns: Project ID or filename
+        :raises ValueError: if neither project name or filename are available
+        """
+        if "PROJ" in self._tables:
+            row = self._tables["PROJ"].iloc[0]
+            name = row.get("PROJ_ID")
+            return name
+        elif self._filename is not None:
+            return self._filename
+        raise ValueError("PROJ_ID not found in PROJ table and filename not available")
+
+    @property
+    def project_name(self) -> str:
+        """Gets AGS name
+
+        Fallback (e.g. StringIO): filename of AGS file.
+
+        :returns: Project name or filename
+        :raises ValueError: if neither project name or filename are available
+        """
+        if "PROJ" in self._tables:
+            row = self._tables["PROJ"].iloc[0]
+            name = row.get("PROJ_NAME")
+            return name
+        elif self._filename is not None:
+            return self._filename
+        raise ValueError("PROJ_NAME not found in PROJ table and filename not available")
+
+    @property
+    def project_memo(self) -> str:
+        """Gets the AGS description
+
+        :returns: Project description from PROJ table PROJ_DESC column.
+        """
+        if "PROJ" in self._tables:
+            row = self._tables["PROJ"].iloc[0]
+            return row.get("PROJ_MEMO")
+        return ""
+
     def parse_ags(self, filepath: Path | str | StringIO) -> None:
         """Parses an AGS file to dataframes for each table.
 
@@ -484,7 +529,7 @@ class AgsContext:
         try:
             crs = CRS.from_user_input(llz)
         except CRSError:
-            logger.warning(f"Could not determine CRS from LOCA_LLZ: {llz}")
+            logger.warning(f"Could not determine CRS from LOCA_LLZ: '{llz}'")
             return None
 
         return crs.to_epsg()
