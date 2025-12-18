@@ -11,6 +11,7 @@
 
 from pathlib import Path
 
+import pint_pandas
 import pytest
 
 from evo.data_converters.ags.common import AgsContext, AgsFileInvalidException
@@ -474,3 +475,25 @@ def test_merge_handles_duplicate_loca_ids_correctly(valid_ags_2a_path, invalid_a
     assert all(scpt_merged["LOCA_ID"] == "EXAMPLE-2-CPT1")
     # Should have 7 rows (only from 2a)
     assert len(scpt_merged) == 7
+
+
+def test_scpt_dpth_column_has_pint_m_unit(valid_ags_path) -> None:
+    context = AgsContext()
+    context.parse_ags(valid_ags_path)
+
+    scpt_table = context.get_table("SCPT")
+
+    dtype = scpt_table["SCPT_DPTH"].dtype
+    assert isinstance(dtype, pint_pandas.PintType)
+    assert dtype.units == "meter", f"Expected SCPT_DPTH unit 'meter', got {dtype.units}"
+
+
+def test_scpt_qt_column_has_pint_megapascals_unit(valid_ags_path) -> None:
+    context = AgsContext()
+    context.parse_ags(valid_ags_path)
+
+    scpt_table = context.get_table("SCPT")
+
+    dtype = scpt_table["SCPT_QT"].dtype
+    assert isinstance(dtype, pint_pandas.PintType)
+    assert dtype.units == "megapascal", f"Expected SCPT_QT unit 'megapascal', got {dtype.units}"

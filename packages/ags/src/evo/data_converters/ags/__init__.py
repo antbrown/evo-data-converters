@@ -9,4 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from pint import UnitRegistry, set_application_registry
+
+# Create one registry for the AGS package
+ags_unit_registry = UnitRegistry()
+
+# Set up pint-pandas to use that registry
+set_application_registry(ags_unit_registry)
+
 __all__ = []

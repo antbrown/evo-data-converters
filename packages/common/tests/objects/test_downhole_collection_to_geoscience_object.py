@@ -9,14 +9,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import pytest
+from unittest.mock import Mock
+
 import pandas as pd
 import pyarrow as pa
-from unittest.mock import Mock
+import pytest
+
+from evo.data_converters.common.objects.downhole_collection import (
+    DistanceTable as DistanceMeasurementTable,
+)
 from evo.data_converters.common.objects.downhole_collection import (
     DownholeCollection,
+)
+from evo.data_converters.common.objects.downhole_collection import (
     IntervalTable as IntervalMeasurementTable,
-    DistanceTable as DistanceMeasurementTable,
 )
 from evo.data_converters.common.objects.downhole_collection_to_geoscience_object import (
     DownholeCollectionToGeoscienceObject,
@@ -102,7 +108,7 @@ def dhc_distance(collars_df, distance_table_mock):
 
     dhc_mock = Mock(spec=DownholeCollection)
     dhc_mock.name = "Test Distance Collection"
-    dhc_mock.tags = {"Test": "DistanceTag"}
+    dhc_mock.tags = {"Tag": "Value"}
     dhc_mock.coordinate_reference_system = 32633
     dhc_mock.collars = collars_mock
     dhc_mock.get_bounding_box.return_value = [100.0, 200.0, 500.0, 600.0, 50.0, 55.0]
@@ -119,7 +125,7 @@ def dhc_interval(collars_df, interval_table_mock, distance_table_mock):
 
     dhc_mock = Mock(spec=DownholeCollection)
     dhc_mock.name = "Test Interval Collection"
-    dhc_mock.tags = {"Test": "IntervalTag"}
+    dhc_mock.tags = {"Tag": "Value"}
     dhc_mock.coordinate_reference_system = 32633
     dhc_mock.collars = collars_mock
     dhc_mock.get_bounding_box.return_value = [100.0, 200.0, 500.0, 600.0, 50.0, 55.0]
@@ -143,7 +149,7 @@ def dhc_mixed(collars_df, distance_table_mock, interval_table_mock):
 
     dhc_mock = Mock(spec=DownholeCollection)
     dhc_mock.name = "Test Mixed Collection"
-    dhc_mock.tags = {"Test": "MixedTag"}
+    dhc_mock.tags = {"Tag": "Value"}
     dhc_mock.coordinate_reference_system = 32633
     dhc_mock.collars = collars_mock
     dhc_mock.get_bounding_box.return_value = [100.0, 200.0, 500.0, 600.0, 50.0, 55.0]
@@ -239,6 +245,14 @@ PROJCS["NZGD2000 / New Zealand Transverse Mercator 2000",
         crs = converter.create_coordinate_reference_system()
 
         assert crs == "unspecified"
+
+    def test_creates_crs_from_epsg_code(self, dhc_distance, mock_data_client) -> None:
+        dhc_distance.coordinate_reference_system = None
+        converter = DownholeCollectionToGeoscienceObject(dhc_distance, mock_data_client, 2193)
+
+        crs = converter.create_coordinate_reference_system()
+
+        assert crs.epsg_code == 2193
 
 
 class TestCreateBoundingBox:
@@ -489,6 +503,17 @@ class TestPathTable:
 
         assert distances == [10.0, 20.0, 30.0, 15.0, 25.0]
 
+    def test_works_with_pint_units(self, converter_distance, distance_table_mock, distance_measurements_df) -> None:
+        distance_table_mock.get_depth_values.return_value = distance_measurements_df["penetrationLength"].astype(
+            "pint[meter]"
+        )
+
+        table = converter_distance.path_table(distance_table_mock)
+
+        distances = table.column("distance").to_pylist()
+
+        assert distances == [10.0, 20.0, 30.0, 15.0, 25.0]
+
 
 class TestCollectionDistancesTable:
     def test_creates_table_with_values_column(self, converter_distance, distance_table_mock) -> None:
@@ -577,7 +602,7 @@ class TestEdgeCases:
 
         dhc_mock = Mock(spec=DownholeCollection)
         dhc_mock.name = "Minimal"
-        dhc_mock.tags = None
+        dhc_mock.tags = {"Tag": "Value"}
         dhc_mock.coordinate_reference_system = 4326
         dhc_mock.collars = collars_mock
         dhc_mock.get_bounding_box.return_value = [100.0, 100.0, 500.0, 500.0, 50.0, 50.0]
@@ -621,6 +646,7 @@ class TestEdgeCases:
 
         dhc_mock = Mock(spec=DownholeCollection)
         dhc_mock.name = "Unequal"
+        dhc_mock.tags = {"Tag": "Value"}
         dhc_mock.coordinate_reference_system = 4326
         dhc_mock.collars = collars_mock
         dhc_mock.get_bounding_box.return_value = [100.0, 300.0, 500.0, 700.0, 50.0, 60.0]

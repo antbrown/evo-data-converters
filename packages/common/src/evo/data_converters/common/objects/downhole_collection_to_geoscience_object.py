@@ -9,43 +9,86 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from evo.data_converters.common.objects.attributes import AttributeFactory
-from evo.data_converters.common.objects.downhole_collection.tables import MeasurementTableAdapter
-from evo.data_converters.common.crs import crs_from_any
-import evo.logging
-from evo.objects.utils.data import ObjectDataClient
+import pandas as pd
+import pyarrow as pa
 from evo_schemas.components import (
     BoundingBox_V1_0_1 as BoundingBox,
+)
+from evo_schemas.components import (
     CategoryData_V1_0_1 as CategoryData,
+)
+from evo_schemas.components import (
     Crs_V1_0_1 as Crs,
-    DownholeAttributes_V1_0_0 as DownholeAttributes,
-    DownholeAttributes_V1_0_0_Item_DistanceTable as DownholeAttributes_Item_DistanceTable,
-    DownholeAttributes_V1_0_0_Item_IntervalTable as DownholeAttributes_Item_IntervalTable,
-    DownholeDirectionVector_V1_0_0 as DownholeDirectionVector,
-    HoleChunks_V1_0_0 as HoleChunks,
-    Intervals_V1_0_1 as Intervals,
-    IntervalTable_V1_2_0_FromTo as IntervalTable_FromTo,
+)
+from evo_schemas.components import (
     DistanceTable_V1_2_0_Distance as DistanceTable_Distance,
+)
+from evo_schemas.components import (
+    DownholeAttributes_V1_0_0 as DownholeAttributes,
+)
+from evo_schemas.components import (
+    DownholeAttributes_V1_0_0_Item_DistanceTable as DownholeAttributes_Item_DistanceTable,
+)
+from evo_schemas.components import (
+    DownholeAttributes_V1_0_0_Item_IntervalTable as DownholeAttributes_Item_IntervalTable,
+)
+from evo_schemas.components import (
+    DownholeDirectionVector_V1_0_0 as DownholeDirectionVector,
+)
+from evo_schemas.components import (
+    HoleChunks_V1_0_0 as HoleChunks,
+)
+from evo_schemas.components import (
+    Intervals_V1_0_1 as Intervals,
+)
+from evo_schemas.components import (
+    IntervalTable_V1_2_0_FromTo as IntervalTable_FromTo,
+)
+from evo_schemas.components import (
     OneOfAttribute_V1_2_0 as OneOfAttribute,
 )
 from evo_schemas.elements import (
     FloatArray1_V1_0_1 as FloatArray1,
+)
+from evo_schemas.elements import (
     FloatArray2_V1_0_1 as FloatArray2,
+)
+from evo_schemas.elements import (
     FloatArray3_V1_0_1 as FloatArray3,
+)
+from evo_schemas.elements import (
     IntegerArray1_V1_0_1 as IntegerArray1,
+)
+from evo_schemas.elements import (
     LookupTable_V1_0_1 as LookupTable,
+)
+from evo_schemas.elements import Unit_V1_0_1 as Unit
+from evo_schemas.elements import (
     UnitLength_V1_0_1_UnitCategories as UnitLength_UnitCategories,
 )
 from evo_schemas.objects import (
     DownholeCollection_V1_3_1 as DownholeCollectionGeoscienceObject,
+)
+from evo_schemas.objects import (
     DownholeCollection_V1_3_1_Location as DownholeCollection_Location,
 )
-import pyarrow as pa
+from pint_pandas import PintType
+
+import evo.logging
+from evo.data_converters.common.crs import crs_from_any
+from evo.data_converters.common.objects.attributes import AttributeFactory
+from evo.data_converters.common.objects.downhole_collection.tables import MeasurementTableAdapter
+from evo.data_converters.common.objects.units import UnitMapper
+from evo.objects.utils.data import ObjectDataClient
 
 from .downhole_collection import (
-    DownholeCollection,
-    IntervalTable as IntervalMeasurementTable,
     DistanceTable as DistanceMeasurementTable,
+)
+from .downhole_collection import (
+    DownholeCollection,
+)
+from .downhole_collection import (
+    IntervalTable as IntervalMeasurementTable,
 )
 
 AZIMUTH: float = 0.0  # Assume vertical
@@ -57,15 +100,17 @@ logger = evo.logging.getLogger("data_converters")
 class DownholeCollectionToGeoscienceObject:
     """Converter for transforming DownholeCollection data into a DownholeCollectionGeoscienceObject"""
 
-    def __init__(self, dhc: DownholeCollection, data_client: ObjectDataClient) -> None:
+    def __init__(self, dhc: DownholeCollection, data_client: ObjectDataClient, epsg_code: int | None = None) -> None:
         """
         Initialize the converter with a downhole collection and data client.
 
         :param dhc: The downhole collection to convert
         :param data_client: Client for saving and managing object data
+        :param epsg_code: default epsg_code to create a Crs if the dhc does not have one.
         """
         self.dhc: DownholeCollection = dhc
         self.data_client: ObjectDataClient = data_client
+        self.epsg_code = epsg_code
 
     def convert(self) -> DownholeCollectionGeoscienceObject:
         """
@@ -79,8 +124,7 @@ class DownholeCollectionToGeoscienceObject:
         coordinate_reference_system = self.create_coordinate_reference_system()
         bounding_box = self.create_bounding_box()
 
-        distance_unit = UnitLength_UnitCategories("m")
-
+        distance_unit = self.get_unit(self.dhc.collars.df["final_depth"], UnitLength_UnitCategories("m"))
         dhc_location = self.create_dhc_location()
         dhc_collections = self.create_dhc_collections()
 
@@ -106,9 +150,15 @@ class DownholeCollectionToGeoscienceObject:
         """
         Create a coordinate reference system object from the downhole collection's CRS.
 
+        If unable to create a Crs from the collection data, create one from the
+        default epsg_code
+
         :return: Standardised CRS object
         """
-        return crs_from_any(self.dhc.coordinate_reference_system)
+        code = crs_from_any(self.dhc.coordinate_reference_system)
+        if code == "unspecified":
+            code = crs_from_any(self.epsg_code)
+        return code
 
     def create_bounding_box(self) -> BoundingBox:
         """
@@ -261,7 +311,7 @@ class DownholeCollectionToGeoscienceObject:
         distances_args = self.data_client.save_table(distances_table)
         distances_go = FloatArray1.from_dict(distances_args)
 
-        distances_unit = UnitLength_UnitCategories("m")
+        distances_unit = self.get_unit(mt.get_primary_column(), UnitLength_UnitCategories("m"))
 
         distance_go = DistanceTable_Distance(
             attributes=self.create_collection_attributes(mt),
@@ -357,9 +407,9 @@ class DownholeCollectionToGeoscienceObject:
             ]
         )
         arrays = [
-            pa.array(self.dhc.collars.df["final_depth"], type=pa.float64()),
-            pa.array(self.dhc.collars.df["final_depth"], type=pa.float64()),
-            pa.array(self.dhc.collars.df["final_depth"], type=pa.float64()),
+            pa.array(self.unwrap_pint(self.dhc.collars.df["final_depth"]), type=pa.float64()),
+            pa.array(self.unwrap_pint(self.dhc.collars.df["final_depth"]), type=pa.float64()),
+            pa.array(self.unwrap_pint(self.dhc.collars.df["final_depth"]), type=pa.float64()),
         ]
         return pa.Table.from_arrays(arrays, schema=distances_schema)
 
@@ -429,9 +479,9 @@ class DownholeCollectionToGeoscienceObject:
         )
 
         arrays = [
-            pa.array(dt.get_depth_values(), type=pa.float64()),
-            pa.array(dt.get_azimuth_values(), type=pa.float64()),
-            pa.array(dt.get_dip_values(), type=pa.float64()),
+            pa.array(self.unwrap_pint(dt.get_depth_values()), type=pa.float64()),
+            pa.array(self.unwrap_pint(dt.get_azimuth_values()), type=pa.float64()),
+            pa.array(self.unwrap_pint(dt.get_dip_values()), type=pa.float64()),
         ]
 
         return pa.Table.from_arrays(arrays, schema=path_schema)
@@ -446,6 +496,7 @@ class DownholeCollectionToGeoscienceObject:
         """
         distances_df = mt.df[[mt.get_primary_column()]].rename(columns={mt.get_primary_column(): "values"})
         distances_schema = pa.schema([pa.field("values", pa.float64())])
+        distances_df["values"] = self.unwrap_pint(distances_df["values"])
         return pa.Table.from_pandas(distances_df, schema=distances_schema)
 
     def collection_start_end_table(self, mt: IntervalMeasurementTable) -> pa.Table:
@@ -474,3 +525,21 @@ class DownholeCollectionToGeoscienceObject:
         if len(distance_tables) >= 1 and isinstance(distance_tables[0], DistanceMeasurementTable):
             return distance_tables[0]
         raise ValueError("No distance measurement tables found.")
+
+    def unwrap_pint(self, values: list | pd.Series) -> list:
+        """
+        If values contains unit information .i.e. is series of pint values
+        then those values need to be unwrapped
+        """
+        if isinstance(values, pd.Series) and isinstance(values.dtype, PintType):
+            return values.pint.magnitude
+        return values
+
+    def get_unit(self, values: pd.Series, default: Unit) -> Unit:
+        """Get the units for the values if available otherwise return the default"""
+        unit = None
+        if isinstance(values, pd.Series) and isinstance(values.dtype, PintType):
+            unit = UnitMapper.lookup(values.dtype)
+        if unit is None:
+            unit = default
+        return unit
