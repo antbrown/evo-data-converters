@@ -168,7 +168,7 @@ def test_crs_from_loca_llz_invalid(valid_ags_path, caplog):
     loca_table["LOCA_LLZ"] = "INVALID_CRS"
 
     assert context.crs_from_loca_llz() is None
-    assert "Could not determine CRS from LOCA_LLZ: INVALID_CRS" in caplog.text
+    assert "Could not determine CRS from LOCA_LLZ: 'INVALID_CRS'" in caplog.text
 
 
 def test_coordinate_reference_system_gref_only(valid_ags_path):

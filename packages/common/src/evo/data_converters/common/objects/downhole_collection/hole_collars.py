@@ -11,6 +11,8 @@
 
 import pandas as pd
 
+from ..attributes import HasAttributesMixin, AttributeNanValuesMappingType
+
 
 HOLE_COLLARS_SCHEMA: dict[str, str] = {
     # Unique identifier for each row, 1-based
@@ -28,7 +30,7 @@ HOLE_COLLARS_SCHEMA: dict[str, str] = {
 }
 
 
-class HoleCollars:
+class HoleCollars(HasAttributesMixin):
     """
     Container for hole collar information with one row per downhole.
 
@@ -56,7 +58,7 @@ class HoleCollars:
     In this example, SCPG_ENV and SCPG_RATE are treated as attribute columns.
     """
 
-    def __init__(self, df: pd.DataFrame) -> None:
+    def __init__(self, df: pd.DataFrame, nan_values_by_column: AttributeNanValuesMappingType | None = None) -> None:
         """
         Initialise hole collars from a DataFrame.
 
@@ -65,6 +67,7 @@ class HoleCollars:
         :raises ValueError: If required columns are missing or data types are incorrect
         """
         self.df: pd.DataFrame = df
+        self.nan_values_by_column = nan_values_by_column or {}
         self._validate()
 
     def _validate(self) -> None:
